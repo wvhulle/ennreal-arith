@@ -1,0 +1,100 @@
+/-
+Division self-cancellation tactics for ENNReal arithmetic.
+Handles patterns like (a / a = 1) with non-zero hypotheses.
+-/
+import Mathlib.Data.ENNReal.Basic
+import Mathlib.Data.ENNReal.Real
+import Mathlib.Data.ENNReal.Inv
+import Mathlib.Tactic.Ring
+import Mathlib.Tactic.Linarith
+import Mathlib.Tactic.FieldSimp
+
+open Lean Meta Elab Tactic
+open ENNReal
+
+namespace ENNRealArith
+
+-- =============================================================================
+-- DIVISION SELF-CANCELLATION TACTIC
+-- =============================================================================
+
+-- Division self-cancellation patterns (a / a = 1)
+syntax "ennreal_div_self" : tactic
+
+elab_rules : tactic | `(tactic| ennreal_div_self) => do
+  let goal ← getMainGoal
+  goal.withContext do
+    -- Try exact patterns with automatic hypothesis inference
+    try
+      evalTactic (← `(tactic| exact ENNReal.div_self (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr ‹_›)) ENNReal.coe_ne_top))
+      return
+    catch _ => pure ()
+
+    try
+      evalTactic (← `(tactic| exact ENNReal.div_self (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr (ne_of_gt ‹_›))) ENNReal.coe_ne_top))
+      return
+    catch _ => pure ()
+
+    -- Try step-by-step apply approach
+    try
+      evalTactic (← `(tactic| apply ENNReal.div_self))
+      evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
+      evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
+      evalTactic (← `(tactic| assumption))
+      evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
+      return
+    catch _ => pure ()
+
+    throwError "ennreal_div_self could not solve the goal"
+
+-- =============================================================================
+-- TEST SUITE: DIVISION SELF-CANCELLATION EXAMPLES
+-- =============================================================================
+
+section TestSuite
+
+-- =============================================================================
+-- DIVISION WITH NONZERO HYPOTHESES
+-- =============================================================================
+
+lemma ennreal_div_same_manual_ne_zero {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by
+  exact ENNReal.div_self (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr ha)) ENNReal.coe_ne_top
+
+lemma ennreal_div_same_ne_zero {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by
+  ennreal_div_self
+
+lemma ennreal_div_same_manual_pos {a : ℕ} (ha : 0 < a) : (↑a : ENNReal) / ↑a = 1 := by
+  exact ENNReal.div_self (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr (ne_of_gt ha))) ENNReal.coe_ne_top
+
+lemma ennreal_div_same_pos {a : ℕ} (ha : 0 < a) : (↑a : ENNReal) / ↑a = 1 := by
+  ennreal_div_self
+
+-- =============================================================================
+-- SPECIFIC EXAMPLES WITH CONCRETE NUMBERS
+-- =============================================================================
+
+lemma ennreal_div_two_two_manual : (↑2 : ENNReal) / ↑2 = 1 := by
+  exact ENNReal.div_self (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr (by norm_num))) ENNReal.coe_ne_top
+
+lemma ennreal_div_two_two : (↑2 : ENNReal) / ↑2 = 1 := by
+  ennreal_div_self
+
+lemma ennreal_div_three_three_manual : (↑3 : ENNReal) / ↑3 = 1 := by
+  exact ENNReal.div_self (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr (by norm_num))) ENNReal.coe_ne_top
+
+lemma ennreal_div_three_three : (↑3 : ENNReal) / ↑3 = 1 := by
+  ennreal_div_self
+
+-- =============================================================================
+-- EXAMPLES WITH VARIABLES AND POSITIVITY
+-- =============================================================================
+
+lemma ennreal_div_succ_succ_manual {n : ℕ} : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 := by
+  exact ENNReal.div_self (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr (Nat.succ_ne_zero n))) ENNReal.coe_ne_top
+
+lemma ennreal_div_succ_succ {n : ℕ} : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 := by
+  ennreal_div_self
+
+end TestSuite
+
+end ENNRealArith
