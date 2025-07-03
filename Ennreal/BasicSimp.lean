@@ -24,14 +24,36 @@ syntax "ennreal_basic_simp" : tactic
 elab_rules : tactic | `(tactic| ennreal_basic_simp) => do
   let goal ← getMainGoal
   goal.withContext do
+    -- Try norm_num first for direct numerical computations
     try
       evalTactic (← `(tactic| norm_num))
-      return
+      if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
 
+    -- Try norm_cast alone - this handles many casting cases completely
     try
       evalTactic (← `(tactic| norm_cast))
-      return
+      if (← getUnsolvedGoals).isEmpty then return
+    catch _ => pure ()
+
+    -- Try simp for algebraic identities
+    try
+      evalTactic (← `(tactic| simp))
+      if (← getUnsolvedGoals).isEmpty then return
+    catch _ => pure ()
+
+    -- Try norm_cast followed by norm_num (for cases where norm_cast leaves numerical goals)
+    try
+      evalTactic (← `(tactic| norm_cast))
+      evalTactic (← `(tactic| norm_num))
+      if (← getUnsolvedGoals).isEmpty then return
+    catch _ => pure ()
+
+    -- Try norm_cast followed by simp
+    try
+      evalTactic (← `(tactic| norm_cast))
+      evalTactic (← `(tactic| simp))
+      if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
 
     throwError "ennreal_basic_simp could not solve the goal"
@@ -69,43 +91,43 @@ lemma ennreal_two_cast : (↑2 : ENNReal) = 2 := by
 -- =============================================================================
 
 lemma ennreal_add_zero_manual {a : ℕ} : (↑a : ENNReal) + 0 = ↑a := by
-  simp only [ENNReal.add_zero]
+  simp only [add_zero]
 
 lemma ennreal_add_zero {a : ℕ} : (↑a : ENNReal) + 0 = ↑a := by
   ennreal_basic_simp
 
 lemma ennreal_zero_add_manual {a : ℕ} : 0 + (↑a : ENNReal) = ↑a := by
-  simp only [ENNReal.zero_add]
+  simp only [zero_add]
 
 lemma ennreal_zero_add {a : ℕ} : 0 + (↑a : ENNReal) = ↑a := by
   ennreal_basic_simp
 
 lemma ennreal_mul_one_manual {a : ℕ} : (↑a : ENNReal) * 1 = ↑a := by
-  simp only [ENNReal.mul_one]
+  simp only [mul_one]
 
 lemma ennreal_mul_one {a : ℕ} : (↑a : ENNReal) * 1 = ↑a := by
   ennreal_basic_simp
 
 lemma ennreal_one_mul_manual {a : ℕ} : 1 * (↑a : ENNReal) = ↑a := by
-  simp only [ENNReal.one_mul]
+  simp only [one_mul]
 
 lemma ennreal_one_mul {a : ℕ} : 1 * (↑a : ENNReal) = ↑a := by
   ennreal_basic_simp
 
 lemma ennreal_mul_zero_manual {a : ℕ} : (↑a : ENNReal) * 0 = 0 := by
-  simp only [ENNReal.mul_zero]
+  simp only [mul_zero]
 
 lemma ennreal_mul_zero {a : ℕ} : (↑a : ENNReal) * 0 = 0 := by
   ennreal_basic_simp
 
 lemma ennreal_zero_mul_manual {a : ℕ} : 0 * (↑a : ENNReal) = 0 := by
-  simp only [ENNReal.zero_mul]
+  simp only [zero_mul]
 
 lemma ennreal_zero_mul {a : ℕ} : 0 * (↑a : ENNReal) = 0 := by
   ennreal_basic_simp
 
 lemma ennreal_div_one_manual {a : ℕ} : (↑a : ENNReal) / 1 = ↑a := by
-  simp only [ENNReal.div_one]
+  simp only [div_one]
 
 lemma ennreal_div_one {a : ℕ} : (↑a : ENNReal) / 1 = ↑a := by
   ennreal_basic_simp
@@ -121,19 +143,19 @@ lemma ennreal_zero_div {a : ℕ} : (0 : ENNReal) / ↑a = 0 := by
 -- =============================================================================
 
 lemma ennreal_pow_zero_manual {a : ℕ} : (↑a : ENNReal) ^ 0 = 1 := by
-  simp only [ENNReal.pow_zero]
+  simp only [pow_zero]
 
 lemma ennreal_pow_zero {a : ℕ} : (↑a : ENNReal) ^ 0 = 1 := by
   ennreal_basic_simp
 
 lemma ennreal_pow_one_manual {a : ℕ} : (↑a : ENNReal) ^ 1 = ↑a := by
-  simp only [ENNReal.pow_one]
+  simp only [pow_one]
 
 lemma ennreal_pow_one {a : ℕ} : (↑a : ENNReal) ^ 1 = ↑a := by
   ennreal_basic_simp
 
 lemma ennreal_one_pow_manual {n : ℕ} : (1 : ENNReal) ^ n = 1 := by
-  simp only [ENNReal.one_pow]
+  simp only [one_pow]
 
 lemma ennreal_one_pow {n : ℕ} : (1 : ENNReal) ^ n = 1 := by
   ennreal_basic_simp
