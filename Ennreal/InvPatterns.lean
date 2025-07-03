@@ -44,8 +44,9 @@ section TestSuite
 lemma ennreal_inv_div_mul_div_manual {a b c : ℕ} :
   (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by
   simp only [ENNReal.div_eq_inv_mul]
-  rw [one_mul, inv_inv]
-  rw [mul_div]
+  simp only [mul_one, inv_inv]
+  rw [mul_assoc, mul_comm ↑a, ← mul_assoc]
+  rw [← ENNReal.coe_mul]
 
 lemma ennreal_inv_div_mul_div {a b c : ℕ} :
   (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by

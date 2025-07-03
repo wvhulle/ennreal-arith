@@ -24,15 +24,61 @@ syntax "ennreal_mul_div_assoc" : tactic
 elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
   let goal ← getMainGoal
   goal.withContext do
-    try
-      evalTactic (← `(tactic| rw [mul_div]))
-      return
-    catch _ => pure ()
+    -- Helper function to try proving nonzero hypotheses
+    let tryNonzeroProof : TacticM Unit := do
+      try
+        evalTactic (← `(tactic| assumption))
+      catch _ =>
+        try
+          evalTactic (← `(tactic| apply ne_of_gt; assumption))
+        catch _ =>
+          try
+            evalTactic (← `(tactic| norm_num))
+          catch _ =>
+            try
+              evalTactic (← `(tactic| exact Nat.succ_ne_zero _))
+            catch _ =>
+              throwError "Could not prove nonzero condition"
 
-    try
-      evalTactic (← `(tactic| rw [← mul_div]))
-      return
-    catch _ => pure ()
+    -- Helper function to try a rewrite pattern with optional follow-up tactics
+    let tryRewritePattern (rewrites : TSyntax `tactic) (followUp : List (TSyntax `tactic) := []) : TacticM Bool := do
+      try
+        evalTactic rewrites
+        for tac in followUp do
+          evalTactic tac
+        return (← getUnsolvedGoals).isEmpty
+      catch _ => return false
+
+    -- Helper function to try div_mul_cancel with non-zero proofs
+    let tryDivMulCancel : TacticM Bool := do
+      try
+        evalTactic (← `(tactic| rw [ENNReal.div_mul_cancel]))
+        evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
+        evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
+        tryNonzeroProof
+        evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
+        return (← getUnsolvedGoals).isEmpty
+      catch _ => return false
+
+    -- Try patterns in order of likelihood (most common first for efficiency)
+    
+    -- 1. Simple rewrites (most common cases)
+    if ← tryRewritePattern (← `(tactic| rw [mul_div])) then return
+    if ← tryRewritePattern (← `(tactic| rw [← mul_div])) then return
+    
+    -- 2. Rewrites with normalization (common for casting)
+    if ← tryRewritePattern (← `(tactic| rw [mul_div])) [← `(tactic| norm_cast)] then return
+    if ← tryRewritePattern (← `(tactic| rw [← mul_div])) [← `(tactic| norm_cast)] then return
+    
+    -- 3. Complex rewrites (for chained operations)
+    if ← tryRewritePattern (← `(tactic| rw [mul_div, mul_assoc])) then return
+    if ← tryRewritePattern (← `(tactic| rw [← mul_div, ← mul_assoc])) then return
+    
+    -- 4. Division cancellation patterns (specialized cases)
+    if ← tryDivMulCancel then return
+    
+    -- 5. General simplification as fallback
+    if ← tryRewritePattern (← `(tactic| simp only [mul_div, mul_assoc, one_mul, mul_one])) then return
 
     throwError "ennreal_mul_div_assoc could not solve the goal"
 
@@ -79,7 +125,8 @@ lemma ennreal_mul_div_four_seven : (↑4 : ENNReal) * ((↑1 : ENNReal) / (↑7 
 -- =============================================================================
 
 lemma ennreal_mul_div_cast_manual {a b c : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = ↑(a * b) / (↑c : ENNReal) := by
-  rw [mul_div, ← ENNReal.coe_mul]
+  rw [mul_div]
+  norm_cast
 
 lemma ennreal_mul_div_cast {a b c : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = ↑(a * b) / (↑c : ENNReal) := by
   ennreal_mul_div_assoc

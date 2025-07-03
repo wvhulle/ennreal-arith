@@ -24,25 +24,30 @@ syntax "ennreal_div_self" : tactic
 elab_rules : tactic | `(tactic| ennreal_div_self) => do
   let goal ← getMainGoal
   goal.withContext do
-    -- Try exact patterns with automatic hypothesis inference
-    try
-      evalTactic (← `(tactic| exact ENNReal.div_self (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr ‹_›)) ENNReal.coe_ne_top))
-      return
-    catch _ => pure ()
+    -- Helper function to try proving nonzero hypotheses
+    let tryNonzeroProof : TacticM Unit := do
+      try
+        evalTactic (← `(tactic| assumption))
+      catch _ =>
+        try
+          evalTactic (← `(tactic| apply ne_of_gt; assumption))
+        catch _ =>
+          try
+            evalTactic (← `(tactic| norm_num))
+          catch _ =>
+            try
+              evalTactic (← `(tactic| exact Nat.succ_ne_zero _))
+            catch _ =>
+              throwError "Could not prove nonzero condition"
 
-    try
-      evalTactic (← `(tactic| exact ENNReal.div_self (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr (ne_of_gt ‹_›))) ENNReal.coe_ne_top))
-      return
-    catch _ => pure ()
-
-    -- Try step-by-step apply approach
+    -- Apply the division self-cancellation pattern
     try
       evalTactic (← `(tactic| apply ENNReal.div_self))
       evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
       evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-      evalTactic (← `(tactic| assumption))
+      tryNonzeroProof
       evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-      return
+      if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
 
     throwError "ennreal_div_self could not solve the goal"
