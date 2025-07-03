@@ -61,22 +61,22 @@ elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
       catch _ => return false
 
     -- Try patterns in order of likelihood (most common first for efficiency)
-    
+
     -- 1. Simple rewrites (most common cases)
     if ← tryRewritePattern (← `(tactic| rw [mul_div])) then return
     if ← tryRewritePattern (← `(tactic| rw [← mul_div])) then return
-    
+
     -- 2. Rewrites with normalization (common for casting)
     if ← tryRewritePattern (← `(tactic| rw [mul_div])) [← `(tactic| norm_cast)] then return
     if ← tryRewritePattern (← `(tactic| rw [← mul_div])) [← `(tactic| norm_cast)] then return
-    
+
     -- 3. Complex rewrites (for chained operations)
     if ← tryRewritePattern (← `(tactic| rw [mul_div, mul_assoc])) then return
     if ← tryRewritePattern (← `(tactic| rw [← mul_div, ← mul_assoc])) then return
-    
+
     -- 4. Division cancellation patterns (specialized cases)
     if ← tryDivMulCancel then return
-    
+
     -- 5. General simplification as fallback
     if ← tryRewritePattern (← `(tactic| simp only [mul_div, mul_assoc, one_mul, mul_one])) then return
 

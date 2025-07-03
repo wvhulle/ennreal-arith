@@ -7,7 +7,7 @@ import Ennreal.DivSelf
 import Ennreal.MulCancel
 import Ennreal.MulDivAssoc
 import Ennreal.InvPatterns
-import Ennreal.SimpAll
+-- import Ennreal.SimpAll
 
 open Lean Meta Elab Tactic
 open ENNReal
@@ -55,11 +55,7 @@ elab_rules : tactic | `(tactic| ennreal_arith) => do
       return
     catch _ => pure ()
 
-    -- Try comprehensive simplification as a last resort
-    try
-      evalTactic (← `(tactic| ennreal_simp_all))
-      return
-    catch _ => pure ()
+    -- All specific tactics tried, no fallback needed
 
     throwError "ennreal_arith could not solve the goal"
 
@@ -114,10 +110,7 @@ elab_rules : tactic | `(tactic| ennreal_simplify) => do
       return
     catch _ => pure ()
 
-    try
-      evalTactic (← `(tactic| ennreal_simp_all))
-      return
-    catch _ => pure ()
+    -- All basic tactics tried
 
     throwError "ennreal_simplify could not solve the goal"
 
@@ -136,9 +129,9 @@ lemma test_mul_cancel {a b c : ℕ} (hc : c ≠ 0) : (↑(a * c) : ENNReal) / (�
 
 lemma test_mul_div_assoc {a b c : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑a * ↑b : ENNReal) / (↑c : ENNReal) := by ennreal_mul_div_assoc
 
-lemma test_inv_patterns {a b c : ℕ} : (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by ennreal_inv_patterns; rw [mul_div]
+lemma test_inv_patterns {a b c : ℕ} : (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by ennreal_inv_patterns
 
-lemma test_simp_all {a b : ℕ} : (↑a : ENNReal) * 1 + 0 = ↑a := by ennreal_simp_all
+lemma test_basic_complex {a : ℕ} : (↑a : ENNReal) * 1 + 0 = ↑a := by ennreal_basic_simp
 
 -- Test that the main tactic works for all patterns
 lemma test_main_basic : (↑2 : ENNReal) + ↑3 = ↑5 := by ennreal_arith
@@ -149,7 +142,7 @@ lemma test_main_mul_cancel {a b c : ℕ} (hc : c ≠ 0) : (↑(a * c) : ENNReal)
 
 lemma test_main_mul_div_assoc {a b c : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑a * ↑b : ENNReal) / (↑c : ENNReal) := by ennreal_arith
 
-lemma test_main_complex {a b : ℕ} : (↑a : ENNReal) * 1 + 0 = ↑a := by ennreal_arith
+lemma test_main_complex {a : ℕ} : (↑a : ENNReal) * 1 + 0 = ↑a := by ennreal_arith
 
 -- Test convenience tactics
 lemma test_div_patterns_self {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by ennreal_div_patterns
@@ -160,7 +153,7 @@ lemma test_rewrite_patterns_assoc {a b c : ℕ} : (↑a : ENNReal) * ((↑b : EN
 
 lemma test_simplify_basic : (↑2 : ENNReal) + ↑3 = ↑5 := by ennreal_simplify
 
-lemma test_simplify_complex {a b : ℕ} : (↑a : ENNReal) * 1 + 0 = ↑a := by ennreal_simplify
+lemma test_simplify_complex {a : ℕ} : (↑a : ENNReal) * 1 + 0 = ↑a := by ennreal_simplify
 
 end IntegrationTests
 
