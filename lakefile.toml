@@ -1,9 +1,9 @@
-defaultTargets = ["ennreal"]
-name = "ennreal"
+defaultTargets = ["ENNRealArith"]
+name = "ennreal-arith"
 version = "0.1.0"
 
 [[lean_lib]]
-name = "Ennreal"
+name = "ENNRealArith"
 
 [[require]]
 name = "mathlib"
