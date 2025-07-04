@@ -125,19 +125,7 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
         return (← getUnsolvedGoals).isEmpty
       catch _ => return false
 
-    -- Pattern 3: Complex Monty Hall pattern from manual proofs
-    let complexMontyHall : TacticM Bool := do
-      try
-        evalTactic (← `(tactic| rw [div_eq_mul_inv, one_mul, inv_inv]))
-        evalTactic (← `(tactic| rw [← mul_div_assoc]))
-        evalTactic (← `(tactic| norm_cast))
-        evalTactic (← `(tactic| norm_num))
-        evalTactic (← `(tactic| rw [ENNReal.div_eq_div_iff]))
-        evalTactic (← `(tactic| all_goals norm_num))
-        return (← getUnsolvedGoals).isEmpty
-      catch _ => return false
-
-    -- Pattern 4: simp followed by rw [mul_div] (already identified TODO)
+    -- Pattern 3: simp followed by rw [mul_div]
     let simpThenRw : TacticM Bool := do
       try
         evalTactic (← `(tactic| simp))
@@ -145,86 +133,7 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
         return (← getUnsolvedGoals).isEmpty
       catch _ => return false
 
-    -- Pattern 5: simp followed by norm_cast
-    let simpThenNormCast : TacticM Bool := do
-      try
-        evalTactic (← `(tactic| simp))
-        evalTactic (← `(tactic| norm_cast))
-        return (← getUnsolvedGoals).isEmpty
-      catch _ => return false
-
-    -- Pattern 6: norm_num followed by simp (for complex arithmetic)
-    let normNumThenSimp : TacticM Bool := do
-      try
-        evalTactic (← `(tactic| norm_num))
-        evalTactic (← `(tactic| simp))
-        return (← getUnsolvedGoals).isEmpty
-      catch _ => return false
-
-    -- Pattern 7: ENNReal.ofReal pattern
-    let ofRealPattern : TacticM Bool := do
-      try
-        evalTactic (← `(tactic| rw [ENNReal.ofReal_div_of_pos]))
-        evalTactic (← `(tactic| norm_num))
-        evalTactic (← `(tactic| norm_num))
-        return (← getUnsolvedGoals).isEmpty
-      catch _ => return false
-
-    -- Pattern 7b: ENNReal.ofReal pattern with all_goals
-    let ofRealPatternAllGoals : TacticM Bool := do
-      try
-        evalTactic (← `(tactic| rw [ENNReal.ofReal_div_of_pos]))
-        evalTactic (← `(tactic| all_goals norm_num))
-        return (← getUnsolvedGoals).isEmpty
-      catch _ => return false
-
-    -- Pattern 7c: Just try norm_num for ofReal equalities
-    let ofRealNormNum : TacticM Bool := do
-      try
-        evalTactic (← `(tactic| norm_num))
-        return (← getUnsolvedGoals).isEmpty
-      catch _ => return false
-
-    -- Pattern 7d: ofReal with simp only (matching manual proof more closely)
-    let ofRealSimpOnly : TacticM Bool := do
-      try
-        evalTactic (← `(tactic| simp only [ENNReal.ofReal_div_of_pos]))
-        evalTactic (← `(tactic| norm_num))
-        return (← getUnsolvedGoals).isEmpty
-      catch _ => return false
-
-    -- Pattern 7e: Try simp with ofReal rules
-    let ofRealSimp : TacticM Bool := do
-      try
-        evalTactic (← `(tactic| simp [ENNReal.ofReal_div_of_pos]))
-        return (← getUnsolvedGoals).isEmpty
-      catch _ => return false
-
-    -- Pattern 7f: For ENNReal.ofReal equalities - use conv to normalize first
-    let ofRealConv : TacticM Bool := do
-      try
-        -- Use conv to enter the argument of ofReal on the left side and normalize it
-        evalTactic (← `(tactic| conv_lhs => arg 1))
-        evalTactic (← `(tactic| norm_num))
-        evalTactic (← `(tactic| rfl))
-        return (← getUnsolvedGoals).isEmpty
-      catch _ =>
-        try
-          -- If that doesn't work, try the full pattern from manual proof
-          evalTactic (← `(tactic| rw [ENNReal.ofReal_div_of_pos]))
-          evalTactic (← `(tactic| norm_num))
-          evalTactic (← `(tactic| norm_num))
-          return (← getUnsolvedGoals).isEmpty
-        catch _ => return false
-
-    -- Pattern 7g: Match the exact manual proof pattern with <;>
-    let ofRealManualPattern : TacticM Bool := do
-      try
-        evalTactic (← `(tactic| rw [ENNReal.ofReal_div_of_pos] <;> norm_num))
-        return (← getUnsolvedGoals).isEmpty
-      catch _ => return false
-
-    -- Pattern 8: mul_inv to div conversion with div_eq_div_iff
+    -- Pattern 4: mul_inv to div conversion with div_eq_div_iff
     let mulInvToDivPattern : TacticM Bool := do
       try
         evalTactic (← `(tactic| rw [← div_eq_mul_inv]))
@@ -234,34 +143,14 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
         return (← getUnsolvedGoals).isEmpty
       catch _ => return false
 
-    -- Pattern 9: Complex inv_frac_mul_frac pattern (match manual proof exactly)
-    let invFracMulFracPattern : TacticM Bool := do
-      try
-        evalTactic (← `(tactic| rw [div_eq_mul_inv, one_mul, inv_inv]))
-        evalTactic (← `(tactic| rw [← mul_div_assoc]))
-        evalTactic (← `(tactic| norm_cast))
-        evalTactic (← `(tactic| norm_num))
-        evalTactic (← `(tactic| rw [ENNReal.div_eq_div_iff]))
-        evalTactic (← `(tactic| all_goals norm_num))
-        return (← getUnsolvedGoals).isEmpty
-      catch _ => return false
-
-    -- Try patterns in order of likelihood and complexity
+    -- Try multi-step patterns only if simple tactics failed
     if ← normCastThenNormNum then return
     if ← divEqDivIff then return
     if ← mulInvToDivPattern then return
-    if ← invFracMulFracPattern then return
-    if ← ofRealNormNum then return
-    if ← ofRealManualPattern then return
-    if ← ofRealConv then return
-    if ← ofRealSimp then return
-    if ← ofRealSimpOnly then return
-    if ← ofRealPattern then return
-    if ← ofRealPatternAllGoals then return
     if ← simpThenRw then return
-    if ← simpThenNormCast then return
-    if ← normNumThenSimp then return
-    if ← complexMontyHall then return
+    
+    -- Only try norm_num at the very end to avoid introducing inverses prematurely
+    if ← tryPattern (← `(tactic| norm_num)) then return
 
     throwError "ennreal_inv_patterns could not solve the goal"
 
