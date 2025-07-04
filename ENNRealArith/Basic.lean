@@ -22,13 +22,13 @@ elab_rules : tactic | `(tactic| ennreal_arith) => do
     ← `(tactic| ennreal_mul_div_assoc),
     ← `(tactic| ennreal_inv_patterns)
   ]
-  
+
   for tac in tactics do
     try
       evalTactic tac
       if (← getUnsolvedGoals).isEmpty then return
     catch _ => continue
-  
+
   throwError "ennreal_arith could not solve the goal"
 
 section Tests
@@ -60,6 +60,7 @@ lemma test_inv_mul {a b : ℕ} :
 
 -- Complex expression test
 lemma test_complex : (↑2 : ENNReal) * 1 + ↑3 * 0 + ↑5 = ↑7 := by ennreal_arith
+
 
 end Tests
 
