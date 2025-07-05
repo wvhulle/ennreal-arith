@@ -23,12 +23,12 @@ This library provides simp lemmas and a convenience tactic for ENNReal arithmeti
 ```lean
 import ENNRealArith
 
--- Our simp lemmas work automatically:
-example (n : ℕ) : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 := by 
+
+example (n : ℕ) : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 := by
   exact ennreal_succ_div_self n
 
-example (a b c : ℕ) : 
-  (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by 
+example (a b c : ℕ) :
+  (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by
   simp
 
 -- The convenience tactic handles complex expressions:
@@ -38,6 +38,6 @@ example (a : ℕ) (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by ennreal_ari
 ```
 
 Note: Lean's existing `norm_cast` and `norm_num` already handle ENNReal well for basic
-arithmetic and coercions. This library adds patterns specific to division and 
+arithmetic and coercions. This library adds patterns specific to division and
 multiplication that aren't covered by the standard tactics.
 -/

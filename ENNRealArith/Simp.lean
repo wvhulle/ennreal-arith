@@ -15,16 +15,16 @@ simplify ENNReal arithmetic expressions automatically.
 
 section DivisionLemmas
 
--- Division by self for natural numbers
+
 @[simp]
-lemma ennreal_nat_div_self {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := 
+lemma ennreal_nat_div_self {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 :=
   ENNReal.div_self (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr ha)) ENNReal.coe_ne_top
 
 @[simp]
-lemma ennreal_succ_div_self (n : ℕ) : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 := 
+lemma ennreal_succ_div_self (n : ℕ) : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 :=
   ennreal_nat_div_self (Nat.succ_ne_zero n)
 
--- Handle the case where coercion happens before addition
+
 @[simp]
 lemma ennreal_coe_add_one_div_self (n : ℕ) : ((↑n : ENNReal) + 1) / ((↑n : ENNReal) + 1) = 1 := by
   have h : (↑n : ENNReal) + 1 ≠ 0 := by simp
@@ -35,24 +35,23 @@ end DivisionLemmas
 
 section MultiplicationCancellation
 
--- Natural number multiplication cancellation patterns
 @[simp]
-lemma ennreal_nat_mul_div_mul_right {a b c : ℕ} (hc : c ≠ 0) : 
+lemma ennreal_nat_mul_div_mul_right {a b c : ℕ} (hc : c ≠ 0) :
   (↑(a * c) : ENNReal) / (↑(b * c) : ENNReal) = (↑a : ENNReal) / (↑b : ENNReal) := by
   rw [Nat.cast_mul, Nat.cast_mul]
-  exact ENNReal.mul_div_mul_right (↑a) (↑b) 
-    (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr hc)) 
+  exact ENNReal.mul_div_mul_right (↑a) (↑b)
+    (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr hc))
     ENNReal.coe_ne_top
 
 @[simp]
-lemma ennreal_nat_mul_div_mul_left {a b c : ℕ} (hc : c ≠ 0) : 
+lemma ennreal_nat_mul_div_mul_left {a b c : ℕ} (hc : c ≠ 0) :
   (↑(c * a) : ENNReal) / (↑(c * b) : ENNReal) = (↑a : ENNReal) / (↑b : ENNReal) := by
   rw [Nat.cast_mul, Nat.cast_mul]
-  exact ENNReal.mul_div_mul_left (↑a) (↑b) 
-    (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr hc)) 
+  exact ENNReal.mul_div_mul_left (↑a) (↑b)
+    (ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr hc))
     ENNReal.coe_ne_top
 
--- Special case: multiplication by zero in numerator
+
 @[simp]
 lemma ennreal_zero_mul_div {b c : ℕ} : (↑(0 * c) : ENNReal) / (↑(b * c) : ENNReal) = 0 / (↑b : ENNReal) := by
   simp [Nat.cast_mul, zero_mul, ENNReal.zero_div]
@@ -61,20 +60,20 @@ end MultiplicationCancellation
 
 section AssociativityLemmas
 
--- Multiplication and division associativity for natural numbers
+
 @[simp]
-lemma ennreal_nat_mul_div_assoc {a b c : ℕ} : 
+lemma ennreal_nat_mul_div_assoc {a b c : ℕ} :
   (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by
   rw [mul_div_assoc', Nat.cast_mul]
 
 @[simp]
-lemma ennreal_nat_div_mul_assoc {a b c : ℕ} : 
+lemma ennreal_nat_div_mul_assoc {a b c : ℕ} :
   ((↑a : ENNReal) / (↑b : ENNReal)) * (↑c : ENNReal) = (↑(a * c) : ENNReal) / (↑b : ENNReal) := by
   rw [ENNReal.mul_comm_div, mul_div_assoc', Nat.cast_mul]
 
--- Special case for division and multiplication cancellation
+
 @[simp]
-lemma ennreal_nat_div_mul_cancel {a : ℕ} (ha : a ≠ 0) : 
+lemma ennreal_nat_div_mul_cancel {a : ℕ} (ha : a ≠ 0) :
   (1 / (↑a : ENNReal)) * (↑a : ENNReal) = 1 := by
   rw [ENNReal.div_mul_cancel]
   · exact ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr ha)
@@ -84,11 +83,11 @@ end AssociativityLemmas
 
 section InverseLemmas
 
--- Inverse patterns for natural numbers
+
 -- Note: The default form is already a⁻¹ * b = b / a by definition in ENNReal
 
 @[simp]
-lemma ennreal_nat_one_div_inv {a : ℕ} : 
+lemma ennreal_nat_one_div_inv {a : ℕ} :
   (1 / (↑a : ENNReal))⁻¹ = (↑a : ENNReal) := by
   rw [one_div, inv_inv]
 

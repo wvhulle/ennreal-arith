@@ -15,9 +15,9 @@ syntax "ennreal_mul_div_assoc" : tactic
 elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
   let goal ← getMainGoal
   goal.withContext do
-    -- First try the most general approach with simp
+
     try
-      evalTactic (← `(tactic| simp only [mul_div, div_mul_eq_mul_div, ENNReal.mul_comm_div, 
+      evalTactic (← `(tactic| simp only [mul_div, div_mul_eq_mul_div, ENNReal.mul_comm_div,
                                         mul_assoc, one_mul, mul_one, Nat.cast_mul]))
       if (← getUnsolvedGoals).isEmpty then return
       -- Try norm_cast if simp didn't fully solve
@@ -27,15 +27,15 @@ elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
       evalTactic (← `(tactic| norm_num))
       if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
-    
+
     -- Try basic rewrites in the most common direction
     let basicPatterns := [
       ← `(tactic| rw [mul_div]),              -- a * (b / c) = (a * b) / c
-      ← `(tactic| rw [div_mul_eq_mul_div]),   -- (a / b) * c = (a * c) / b
+      ← `(tactic| rw [div_mul_eq_mul_div]),
       ← `(tactic| rw [← mul_div]),            -- reverse direction if needed
       ← `(tactic| rw [← div_mul_eq_mul_div])  -- reverse direction if needed
     ]
-    
+
     for pattern in basicPatterns do
       try
         evalTactic pattern
@@ -44,13 +44,13 @@ elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
         catch _ => pure ()
         if (← getUnsolvedGoals).isEmpty then return
       catch _ => continue
-    
-    -- Handle special case: division multiplication cancellation
-    -- First check if it's the exact pattern we're looking for
+
+
+
     try
-      -- For the specific pattern 1 / x * x = 1, we can use simp
+
       evalTactic (← `(tactic| simp only [ENNReal.div_mul_cancel]))
-      -- May need to prove conditions
+
       let remainingGoals ← getUnsolvedGoals
       for goal in remainingGoals do
         goal.withContext do
@@ -64,12 +64,12 @@ elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
               -- Try to prove ≠ ⊤
               evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
             catch _ =>
-              -- Last resort
+
               evalTactic (← `(tactic| assumption))
       if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
-    
-    -- Handle division by self pattern (which can arise from simplification)
+
+
     try
       evalTactic (← `(tactic| apply ENNReal.div_self))
       -- Prove ≠ 0

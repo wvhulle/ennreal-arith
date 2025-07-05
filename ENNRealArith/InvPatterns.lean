@@ -15,7 +15,6 @@ syntax "ennreal_inv_patterns" : tactic
 elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
   let goal ← getMainGoal
   goal.withContext do
-    -- Pattern testing function
     let tryPattern (tac : TSyntax `tactic) : TacticM Bool := do
       try
         let goals_before ← getUnsolvedGoals
@@ -25,57 +24,53 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
         return goals_after.isEmpty
       catch _ => return false
 
-    -- Ordered by likelihood and cost: cheapest/most specific first
+
     let tactics : Array (TSyntax `tactic) := #[
-      -- Reflexivity is cheapest
       ← `(tactic| rfl),
 
-      -- Simple rewrites for common patterns (before norm_num to avoid introducing inverses)
+
       ← `(tactic| rw [inv_inv]),
       ← `(tactic| rw [mul_one]),
       ← `(tactic| rw [one_mul]),
 
-      -- Division/inverse conversions (most common use case)
+
       ← `(tactic| rw [ENNReal.div_eq_inv_mul]),
       ← `(tactic| rw [div_eq_mul_inv]),
       ← `(tactic| rw [← div_eq_mul_inv]),
       ← `(tactic| rw [div_eq_mul_inv, one_mul, inv_inv]),
       ← `(tactic| rw [inv_eq_one_div]),
 
-      -- Commutativity for when order matters
+
       ← `(tactic| rw [mul_comm]),
 
-      -- Combined simp for common patterns
+
       ← `(tactic| simp only [ENNReal.div_eq_inv_mul, mul_one, one_mul, inv_inv, mul_comm, mul_assoc]),
       ← `(tactic| simp only [div_eq_mul_inv, one_mul, inv_inv]),
 
-      -- Specialized patterns
+
       ← `(tactic| simp only [mul_div]),
       ← `(tactic| rw [mul_div]),
 
-      -- Handle nat casts
+
       ← `(tactic| simp only [mul_div, Nat.cast_mul]),
 
-      -- More aggressive simp combinations for complex cases
+
       ← `(tactic| simp only [div_eq_mul_inv, one_mul, inv_inv, mul_div_assoc, ENNReal.div_eq_inv_mul]),
       ← `(tactic| simp only [div_eq_mul_inv, one_mul, inv_inv, mul_div_assoc, ENNReal.coe_div]),
 
-      -- mul_div_assoc patterns (identified from manual proofs)
+
       ← `(tactic| rw [← mul_div_assoc]),
       ← `(tactic| rw [mul_div_assoc]),
 
-      -- ENNReal.ofReal patterns (for real number conversions) - handled in multi-step patterns
 
-      -- Special pattern for ofReal equality with division - handled in multi-step patterns
 
-      -- Generic simp as last resort (handles complex cases)
+
       ← `(tactic| simp),
       ← `(tactic| simp [mul_div])
     ]
 
-    -- Try specific patterns first before simple tactics that might introduce inverses
 
-    -- High-priority pattern for a * b⁻¹ = c⁻¹ (handles the user's reported case)
+
     let mulInvEqInvPattern : TacticM Bool := do
       try
         evalTactic (← `(tactic| rw [← div_eq_mul_inv, inv_eq_one_div]))
@@ -87,13 +82,12 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
 
     if ← mulInvEqInvPattern then return
 
-    -- Pattern for ofReal equalities - must be tried early before norm_num introduces inverses
     let ofRealEarlyPattern : TacticM Bool := do
       try
         let goal ← getMainGoal
         goal.withContext do
           let target ← goal.getType
-          -- Check if this is an ENNReal.ofReal goal
+
           match target with
           | .app (.app _ (.app (.const `ENNReal.ofReal _) _)) _ =>
             evalTactic (← `(tactic| repeat rw [inv_eq_one_div]))
@@ -103,6 +97,16 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
       catch _ => return false
 
     if ← ofRealEarlyPattern then return
+
+    -- Pattern for: (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal)
+    let invFracMulFracPatternEarly_alt : TacticM Bool := do
+      try
+        evalTactic (← `(tactic| rw [one_div, inv_inv, Nat.cast_mul, mul_div]))
+        return (← getUnsolvedGoals).isEmpty
+      catch _ => return false
+
+
+    if ← invFracMulFracPatternEarly_alt then return
 
     -- Pattern for: ((1 : ENNReal) / 6)⁻¹ * (2 / 18) = 2 / 3
     let invFracMulFracPatternEarly : TacticM Bool := do
@@ -122,7 +126,6 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
       if ← tryPattern tac then return
 
 
-    -- Pattern 2: ENNReal.div_eq_div_iff with all_goals norm_num (critical for division equality)
     let divEqDivIff : TacticM Bool := do
       try
         evalTactic (← `(tactic| rw [ENNReal.div_eq_div_iff]))
@@ -131,7 +134,6 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
         return goals_after.isEmpty
       catch _ => return false
 
-    -- Pattern 3: simp followed by rw [mul_div] (less reliable with hypotheses, try later)
     let simpThenRw : TacticM Bool := do
       try
         evalTactic (← `(tactic| simp only [ENNReal.div_eq_inv_mul, mul_one, one_mul, inv_inv]))
@@ -140,12 +142,10 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
         return goals_after.isEmpty
       catch _ => return false
 
-    -- Pattern 3b: general simp followed by rw [mul_div] (for more complex cases)
     let generalSimpThenRw : TacticM Bool := do
       try
         evalTactic (← `(tactic| simp))
         evalTactic (← `(tactic| rw [mul_div]))
-        -- If we still have goals, try to solve multiplication rearrangement
         let remainingGoals ← getUnsolvedGoals
         if !remainingGoals.isEmpty then
           evalTactic (← `(tactic| simp [mul_comm, mul_assoc, mul_left_comm]))
@@ -173,6 +173,18 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
     throwError "ennreal_inv_patterns could not solve the goal"
 
 section TestSuite
+
+
+lemma ennreal_inv_div_mul_div_manual {a b c : ℕ} :
+  (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by
+  rw [one_div]
+  rw [ inv_inv, ]
+  rw [ Nat.cast_mul]
+  rw [mul_div]
+
+lemma ennreal_inv_div_mul_div {a b c : ℕ} :
+  (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by
+  ennreal_inv_patterns
 
 
 lemma eightteen_manual:  ENNReal.ofReal 18⁻¹ = 18⁻¹ := by
@@ -255,15 +267,6 @@ lemma ennreal_two_inv_three_manual : (1 / (↑2 : ENNReal))⁻¹ * ((↑3 : ENNR
 lemma ennreal_two_inv_three : (1 / (↑2 : ENNReal))⁻¹ * ((↑3 : ENNReal) / (↑5 : ENNReal)) = (↑2 * ↑3 : ENNReal) / (↑5 : ENNReal) := by
   simp only [ENNReal.div_eq_inv_mul, one_mul, inv_inv, mul_comm, mul_assoc]
 
-lemma ennreal_inv_div_mul_div_manual {a b c : ℕ} :
-  (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by
-  simp
-  rw [mul_div]
-
--- TODO: Fix this - the simp tactic behaves differently in the tactic vs manual proof
--- lemma ennreal_inv_div_mul_div {a b c : ℕ} :
---   (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by
---   ennreal_inv_patterns
 
 lemma ennreal_complex_inv_manual {a b c : ℕ} :
   (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑a * ↑b : ENNReal) / (↑c : ENNReal) := by
@@ -274,7 +277,6 @@ lemma ennreal_complex_inv {a b c : ℕ} :
   (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑a * ↑b : ENNReal) / (↑c : ENNReal) := by
   ennreal_inv_patterns
 
--- Tests from Monty Hall patterns
 lemma test_monty_hall_inv1_manual : ((1 : ENNReal) / 6)⁻¹ * (1 / 18) = 1 / 3 := by
   calc
     ((1 : ENNReal) / 6)⁻¹ * (1 / 18) = (6 : ENNReal) * (1 / 18) := by
@@ -294,7 +296,6 @@ lemma test_monty_hall_inv1_manual : ((1 : ENNReal) / 6)⁻¹ * (1 / 18) = 1 / 3 
       · norm_num
     _ = ENNReal.ofNNReal (1 / 3) := by
       congr 1
-      -- Show that 6 / 18 = 1 / 3 in NNReal
       field_simp
       norm_num
     _ = 1 / 3 := by
@@ -306,8 +307,6 @@ lemma test_monty_hall_inv1 : ((1 : ENNReal) / 6)⁻¹ * (1 / 18) = 1 / 3 := by
   ennreal_inv_patterns
 
 
-
--- Patterns from Monty Hall problem
 lemma test_add_then_div_manual : ((1 : ENNReal) + 2) / 18 = 1 / 6 := by
   norm_cast
   norm_num

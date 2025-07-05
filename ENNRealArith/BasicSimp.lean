@@ -26,7 +26,7 @@ elab_rules : tactic | `(tactic| ennreal_basic_simp) => do
       [← `(tactic| norm_cast)],
       [← `(tactic| simp)],
       [← `(tactic| norm_cast), ← `(tactic| norm_num)],
-      -- Handle fraction addition and inverse patterns
+
       [← `(tactic| simp only [add_zero, zero_add, inv_eq_one_div])],
       [← `(tactic| simp only [add_zero, zero_add]), ← `(tactic| norm_num)],
       [← `(tactic| rw [ENNReal.div_eq_div_iff]), ← `(tactic| all_goals norm_num)]
