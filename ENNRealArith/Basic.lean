@@ -3,6 +3,7 @@ import ENNRealArith.DivSelf
 import ENNRealArith.MulCancel
 import ENNRealArith.MulDivAssoc
 import ENNRealArith.InvPatterns
+import ENNRealArith.FractionAdd
 
 -- Import the simp lemmas file which auto-registers with simp
 import ENNRealArith.Simp
@@ -17,6 +18,7 @@ syntax "ennreal_arith" : tactic
 elab_rules : tactic | `(tactic| ennreal_arith) => do
   let tactics : Array (TSyntax `tactic) := #[
     ← `(tactic| ennreal_basic_simp),
+    ← `(tactic| ennreal_fraction_add),
     ← `(tactic| ennreal_div_self),
     ← `(tactic| ennreal_mul_cancel),
     ← `(tactic| ennreal_mul_div_assoc),

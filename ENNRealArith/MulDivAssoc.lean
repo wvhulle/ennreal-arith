@@ -68,6 +68,24 @@ elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
               evalTactic (← `(tactic| assumption))
       if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
+    
+    -- Handle division by self pattern (which can arise from simplification)
+    try
+      evalTactic (← `(tactic| apply ENNReal.div_self))
+      -- Prove ≠ 0
+      try
+        evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
+        evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
+        evalTactic (← `(tactic| assumption))
+      catch _ =>
+        evalTactic (← `(tactic| assumption))
+      -- Prove ≠ ⊤
+      try
+        evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
+      catch _ =>
+        evalTactic (← `(tactic| assumption))
+      if (← getUnsolvedGoals).isEmpty then return
+    catch _ => pure ()
 
     throwError "ennreal_mul_div_assoc could not solve the goal"
 
@@ -133,9 +151,8 @@ lemma ennreal_div_mul_cancel_manual {a : ℕ} (ha : a ≠ 0) : (1 / (↑a : ENNR
   · exact ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr ha)
   · exact ENNReal.coe_ne_top
 
--- TODO: Fix this test - the tactic doesn't handle this specific pattern correctly
--- lemma ennreal_div_mul_cancel {a : ℕ} (ha : a ≠ 0) : (1 / (↑a : ENNReal)) * ↑a = 1 := by
---   ennreal_mul_div_assoc
+lemma ennreal_div_mul_cancel {a : ℕ} (ha : a ≠ 0) : (1 / (↑a : ENNReal)) * ↑a = 1 := by
+  ennreal_mul_div_assoc
 
 
 lemma ennreal_div_mul_right_manual {a b c : ℕ} : ((↑a : ENNReal) / (↑b : ENNReal)) * (↑c : ENNReal) = (↑a * ↑c : ENNReal) / (↑b : ENNReal) := by

@@ -4,7 +4,6 @@ import Mathlib.Data.ENNReal.Inv
 import Mathlib.Tactic.Ring
 import Mathlib.Tactic.Linarith
 import Mathlib.Tactic.FieldSimp
-
 open Lean Meta Elab Tactic
 open ENNReal
 
@@ -41,6 +40,8 @@ elab_rules : tactic | `(tactic| ennreal_div_self) => do
 
     throwError "ennreal_div_self could not solve the goal"
 
+
+
 section TestSuite
 
 lemma ennreal_div_same_manual_ne_zero {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by
@@ -72,6 +73,8 @@ lemma ennreal_div_succ_succ_manual {n : ℕ} : (↑(n + 1) : ENNReal) / ↑(n + 
 
 lemma ennreal_div_succ_succ {n : ℕ} : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 := by
   ennreal_div_self
+
+
 
 end TestSuite
 
