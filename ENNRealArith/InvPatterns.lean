@@ -166,183 +166,75 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
 section TestSuite
 
 
-lemma ennreal_inv_div_mul_div_manual {a b c : ℕ} :
-  (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by
-  rw [one_div]
-  rw [ inv_inv, ]
-  rw [ Nat.cast_mul]
-  rw [mul_div]
-
-lemma ennreal_inv_div_mul_div {a b c : ℕ} :
+lemma test_inverse_fraction_multiplication {a b c : ℕ} :
   (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by
   ennreal_inv_patterns
 
 
-lemma eightteen_manual:  ENNReal.ofReal 18⁻¹ = 18⁻¹ := by
-  repeat rw [inv_eq_one_div]
-  rw [ENNReal.ofReal_div_of_pos]
-  norm_cast
-  norm_num
-
-
-lemma eightteen:  ENNReal.ofReal 18⁻¹ = 18⁻¹ := by
+lemma test_ofReal_inverse_equality:  ENNReal.ofReal 18⁻¹ = 18⁻¹ := by
   ennreal_inv_patterns
 
-lemma ennreal_three_div_two_concrete_manual : (↑3 : ENNReal) * (↑2 : ENNReal)⁻¹ = (↑3 : ENNReal) / (↑2 : ENNReal) := by
-  rfl
-
-lemma ennreal_three_div_two_concrete : (↑3 : ENNReal) * (↑2 : ENNReal)⁻¹ = (↑3 : ENNReal) / (↑2 : ENNReal) := by
+lemma test_multiplication_by_inverse_equals_division : (↑3 : ENNReal) * (↑2 : ENNReal)⁻¹ = (↑3 : ENNReal) / (↑2 : ENNReal) := by
   ennreal_inv_patterns
 
-lemma ennreal_inv_inv_manual {a : ℕ} : ((↑a : ENNReal)⁻¹)⁻¹ = (↑a : ENNReal) := by
-  rw [inv_inv]
-
-lemma ennreal_inv_inv {a : ℕ} : ((↑a : ENNReal)⁻¹)⁻¹ = (↑a : ENNReal) := by
+lemma test_double_inverse_identity {a : ℕ} : ((↑a : ENNReal)⁻¹)⁻¹ = (↑a : ENNReal) := by
   ennreal_inv_patterns
 
-lemma ennreal_div_eq_inv_mul_manual {a b : ℕ} : (↑a : ENNReal) / (↑b : ENNReal) = (↑a : ENNReal) * (↑b : ENNReal)⁻¹ := by
-  rw [ENNReal.div_eq_inv_mul, mul_comm]
-
-lemma ennreal_div_eq_inv_mul {a b : ℕ} : (↑a : ENNReal) / (↑b : ENNReal) = (↑a : ENNReal) * (↑b : ENNReal)⁻¹ := by
+lemma test_division_as_inverse_multiplication {a b : ℕ} : (↑a : ENNReal) / (↑b : ENNReal) = (↑a : ENNReal) * (↑b : ENNReal)⁻¹ := by
   ennreal_inv_patterns
 
-lemma ennreal_mul_inv_manual {a b : ℕ} : (↑a : ENNReal) * (↑b : ENNReal)⁻¹ = (↑a : ENNReal) / (↑b : ENNReal) := by
-  rfl
-
-lemma ennreal_mul_inv {a b : ℕ} : (↑a : ENNReal) * (↑b : ENNReal)⁻¹ = (↑a : ENNReal) / (↑b : ENNReal) := by
+lemma test_inverse_multiplication_as_division {a b : ℕ} : (↑a : ENNReal) * (↑b : ENNReal)⁻¹ = (↑a : ENNReal) / (↑b : ENNReal) := by
   ennreal_inv_patterns
 
-lemma ennreal_inv_two_mul_three_manual : (↑2 : ENNReal)⁻¹ * (↑3 : ENNReal) = (↑3 : ENNReal) * (↑2 : ENNReal)⁻¹ := by
-  rw [mul_comm]
-
-lemma ennreal_inv_two_mul_three : (↑2 : ENNReal)⁻¹ * (↑3 : ENNReal) = (↑3 : ENNReal) * (↑2 : ENNReal)⁻¹ := by
+lemma test_inverse_multiplication_commutativity : (↑2 : ENNReal)⁻¹ * (↑3 : ENNReal) = (↑3 : ENNReal) * (↑2 : ENNReal)⁻¹ := by
   ennreal_inv_patterns
 
-lemma ennreal_one_div_eq_inv_manual {a : ℕ} : (1 : ENNReal) / (↑a : ENNReal) = (↑a : ENNReal)⁻¹ := by
-  rw [ENNReal.div_eq_inv_mul, mul_one]
-
-lemma ennreal_one_div_eq_inv {a : ℕ} : (1 : ENNReal) / (↑a : ENNReal) = (↑a : ENNReal)⁻¹ := by
+lemma test_reciprocal_as_inverse {a : ℕ} : (1 : ENNReal) / (↑a : ENNReal) = (↑a : ENNReal)⁻¹ := by
   ennreal_inv_patterns
 
-lemma ennreal_one_div_inv_manual {a : ℕ} : (1 : ENNReal) / (↑a : ENNReal)⁻¹ = (↑a : ENNReal) := by
-  rw [ENNReal.div_eq_inv_mul, mul_one, inv_inv]
-
-lemma ennreal_one_div_inv {a : ℕ} : (1 : ENNReal) / (↑a : ENNReal)⁻¹ = (↑a : ENNReal) := by
+lemma test_reciprocal_of_inverse {a : ℕ} : (1 : ENNReal) / (↑a : ENNReal)⁻¹ = (↑a : ENNReal) := by
   ennreal_inv_patterns
 
-lemma ennreal_two_inv_manual : (↑2 : ENNReal)⁻¹ = 1 / (↑2 : ENNReal) := by
-  rw [inv_eq_one_div]
-
-lemma ennreal_two_inv : (↑2 : ENNReal)⁻¹ = 1 / (↑2 : ENNReal) := by
+lemma test_inverse_as_reciprocal_two : (↑2 : ENNReal)⁻¹ = 1 / (↑2 : ENNReal) := by
   ennreal_inv_patterns
 
-lemma ennreal_three_inv_manual : (↑3 : ENNReal)⁻¹ = 1 / (↑3 : ENNReal) := by
-  rw [inv_eq_one_div]
-
-lemma ennreal_three_inv : (↑3 : ENNReal)⁻¹ = 1 / (↑3 : ENNReal) := by
+lemma test_inverse_as_reciprocal_three : (↑3 : ENNReal)⁻¹ = 1 / (↑3 : ENNReal) := by
   ennreal_inv_patterns
 
-lemma ennreal_one_div_two_inv_mul_three_div_seven_manual :
+lemma test_complex_inverse_fraction_pattern_2_3_7 :
   (1 / (↑2 : ENNReal))⁻¹ * ((↑3 : ENNReal) / (↑7 : ENNReal)) = (↑2 * ↑3 : ENNReal) / (↑7 : ENNReal) := by
   simp only [ENNReal.div_eq_inv_mul, mul_one, inv_inv]
   simp only [mul_comm, mul_assoc]
 
-lemma ennreal_one_div_two_inv_mul_three_div_seven :
-  (1 / (↑2 : ENNReal))⁻¹ * ((↑3 : ENNReal) / (↑7 : ENNReal)) = (↑2 * ↑3 : ENNReal) / (↑7 : ENNReal) := by
-  simp only [ENNReal.div_eq_inv_mul, mul_one, inv_inv]
-  simp only [mul_comm, mul_assoc]
-
-lemma ennreal_two_inv_three_manual : (1 / (↑2 : ENNReal))⁻¹ * ((↑3 : ENNReal) / (↑5 : ENNReal)) = (↑2 * ↑3 : ENNReal) / (↑5 : ENNReal) := by
-  simp only [ENNReal.div_eq_inv_mul, one_mul, inv_inv, mul_comm, mul_assoc]
-
-lemma ennreal_two_inv_three : (1 / (↑2 : ENNReal))⁻¹ * ((↑3 : ENNReal) / (↑5 : ENNReal)) = (↑2 * ↑3 : ENNReal) / (↑5 : ENNReal) := by
+lemma test_complex_inverse_fraction_pattern_2_3_5 : (1 / (↑2 : ENNReal))⁻¹ * ((↑3 : ENNReal) / (↑5 : ENNReal)) = (↑2 * ↑3 : ENNReal) / (↑5 : ENNReal) := by
   simp only [ENNReal.div_eq_inv_mul, one_mul, inv_inv, mul_comm, mul_assoc]
 
 
-lemma ennreal_complex_inv_manual {a b c : ℕ} :
-  (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑a * ↑b : ENNReal) / (↑c : ENNReal) := by
-  simp
-  rw [mul_div]
-
-lemma ennreal_complex_inv {a b c : ℕ} :
+lemma test_inverse_fraction_multiplication_generic {a b c : ℕ} :
   (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑a * ↑b : ENNReal) / (↑c : ENNReal) := by
   ennreal_inv_patterns
 
-lemma test_monty_hall_inv1_manual : ((1 : ENNReal) / 6)⁻¹ * (1 / 18) = 1 / 3 := by
-  calc
-    ((1 : ENNReal) / 6)⁻¹ * (1 / 18) = (6 : ENNReal) * (1 / 18) := by
-      rw [<- ENNReal.mul_left_inj]
-      all_goals norm_num
-      exact ne_zero_of_eq_one rfl
-      exact one_ne_top
-    _ = ((6 : ENNReal) * (1 : ENNReal)) / 18 := by exact Eq.symm (mul_div_assoc 6 1 18)
-    _ = ENNReal.ofNNReal ((6 : NNReal) * ( 1 : NNReal)) / 18 := by
-      norm_cast
-    _ =  ENNReal.ofNNReal  6 / 18 := by
-      rw [ENNReal.ofNNReal]
-      norm_cast
-    _ = ENNReal.ofNNReal ( (6 : NNReal) / (18: NNReal)) := by
-      rw [ENNReal.coe_div]
-      · norm_num
-      · norm_num
-    _ = ENNReal.ofNNReal (1 / 3) := by
-      congr 1
-      field_simp
-      norm_num
-    _ = 1 / 3 := by
-      rw [ENNReal.coe_div]
-      · norm_num
-      · norm_num
-
-lemma test_monty_hall_inv1 : ((1 : ENNReal) / 6)⁻¹ * (1 / 18) = 1 / 3 := by
+lemma test_inverse_fraction_concrete_6_18_3 : ((1 : ENNReal) / 6)⁻¹ * (1 / 18) = 1 / 3 := by
   ennreal_inv_patterns
 
 
-lemma test_add_then_div_manual : ((1 : ENNReal) + 2) / 18 = 1 / 6 := by
-  norm_cast
-  norm_num
-  rw [inv_eq_one_div]
-  rw [ENNReal.div_eq_div_iff]
-  all_goals norm_num
-
-lemma test_add_then_div : ((1 : ENNReal) + 2) / 18 = 1 / 6 := by
+lemma test_addition_then_division : ((1 : ENNReal) + 2) / 18 = 1 / 6 := by
   ennreal_inv_patterns
 
-lemma test_inv_frac_mul_frac2_manual : ((1 : ENNReal) / 6)⁻¹ * (2 / 18) = 2 / 3 := by
-  rw [div_eq_mul_inv, one_mul, inv_inv]
-  rw [<- mul_div_assoc]
-  norm_cast
-  norm_num
-  rw [ENNReal.div_eq_div_iff]
-  all_goals norm_num
-
-
-lemma test_inv_frac_mul_frac2 : ((1 : ENNReal) / 6)⁻¹ * (2 / 18) = 2 / 3 := by
+lemma test_inverse_fraction_multiplication_6_18 : ((1 : ENNReal) / 6)⁻¹ * (2 / 18) = 2 / 3 := by
   ennreal_inv_patterns
 
 
-lemma test_ofReal_eq_manual : ENNReal.ofReal (1 / 9) = 2 / 18 := by
-  rw [show (1 : ℝ) / 9 = 2 / 18 from by norm_num]
-  rw [ENNReal.ofReal_div_of_pos] <;> norm_num
-
--- Additional patterns found in MontyHall
-lemma test_ofReal_eq : ENNReal.ofReal (1 / 9) = 2 / 18 := by
+lemma test_ofReal_fraction_equality : ENNReal.ofReal (1 / 9) = 2 / 18 := by
   ennreal_inv_patterns
 
-lemma test_mul_inv_eq_inv_manual : (6 : ENNReal) * 18⁻¹ = 3⁻¹ := by
-  rw [ <- div_eq_mul_inv]
-  rw [inv_eq_one_div]
-  rw [ENNReal.div_eq_div_iff]
-  all_goals   norm_num
-
-lemma test_mul_inv_eq_inv : (6 : ENNReal) * 18⁻¹ = 3⁻¹ := by
+lemma test_multiplication_inverse_equals_inverse : (6 : ENNReal) * 18⁻¹ = 3⁻¹ := by
   ennreal_inv_patterns
 
--- Test case: tactic should work even with hypotheses in context
-lemma test_with_hypotheses (_h1 : True) (_h2 : 1 + 1 = 2) : (6 : ENNReal) * 18⁻¹ = 3⁻¹ := by
+lemma test_inverse_pattern_with_context (_h1 : True) (_h2 : 1 + 1 = 2) : (6 : ENNReal) * 18⁻¹ = 3⁻¹ := by
   ennreal_inv_patterns
 
-lemma test_monty_hall_context
+lemma test_inverse_pattern_multiple_hypotheses
   (_h_inter_eq : True)
   (_h_filter_eq : 1 + 1 = 2)
   (_h_filter_explicit : True) :
@@ -350,7 +242,7 @@ lemma test_monty_hall_context
   ennreal_inv_patterns
 
 
-lemma test_monty_goals_context
+lemma test_inverse_pattern_with_conjunction
    (a b: Nat) : (6 : ENNReal) * 18⁻¹ = 3⁻¹ ∧ a + b = b + a := by
     constructor
     · ennreal_inv_patterns

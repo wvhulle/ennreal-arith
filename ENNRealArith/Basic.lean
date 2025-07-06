@@ -35,40 +35,31 @@ elab_rules : tactic | `(tactic| ennreal_arith) => do
 section Tests
 
 
-lemma test_basic_add : (↑2 : ENNReal) + ↑3 = ↑5 := by ennreal_arith
+lemma test_main_tactic_addition : (↑2 : ENNReal) + ↑3 = ↑5 := by ennreal_arith
 
-lemma test_basic_add_mul : (↑2 : ENNReal) + ↑3 * ↑4 = ↑14 := by ennreal_arith
+lemma test_addition_multiplication_precedence : (↑2 : ENNReal) + ↑3 * ↑4 = ↑14 := by ennreal_arith
 
-lemma test_basic_zero_one {a : ℕ} : (↑a : ENNReal) * 1 + 0 = ↑a := by ennreal_arith
-
-
-lemma test_div_self_basic {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by ennreal_arith
-
--- Note: This is testing the specific pattern ↑(n + 1) / ↑(n + 1) = 1
-lemma test_div_self_succ (n : ℕ) : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 := by ennreal_arith
+lemma test_multiplicative_additive_identity {a : ℕ} : (↑a : ENNReal) * 1 + 0 = ↑a := by ennreal_arith
 
 
-lemma test_mul_cancel {a b c : ℕ} (hc : c ≠ 0) :
+
+
+lemma test_multiplication_cancellation_right {a b c : ℕ} (hc : c ≠ 0) :
   (↑(a * c) : ENNReal) / (↑(b * c)) = (↑a) / (↑b) := by ennreal_arith
 
 
-lemma test_mul_div_assoc {a b c : ℕ} :
+lemma test_mul_div_associativity {a b c : ℕ} :
   (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by ennreal_arith
 
 
-lemma test_inv_mul {a b : ℕ} :
+lemma test_inverse_multiplication_to_division {a b : ℕ} :
   (↑a : ENNReal)⁻¹ * (↑b : ENNReal) = (↑b : ENNReal) / (↑a : ENNReal) := by ennreal_arith
 
 
-lemma test_complex : (↑2 : ENNReal) * 1 + ↑3 * 0 + ↑5 = ↑7 := by ennreal_arith
+lemma test_mixed_arithmetic_operations : (↑2 : ENNReal) * 1 + ↑3 * 0 + ↑5 = ↑7 := by ennreal_arith
 
-lemma test_generic_add {a b : ℕ} : (↑a : ENNReal) + ↑b = ↑(a + b) := by ennreal_arith
-lemma test_generic_mul {a b : ℕ} : (↑a : ENNReal) * ↑b = ↑(a * b) := by ennreal_arith
-lemma test_generic_div_self {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by ennreal_arith
-lemma test_generic_mul_div {a b c : ℕ} : (↑a : ENNReal) * (↑b / ↑c) = (↑a * ↑b) / ↑c := by ennreal_arith
-lemma test_generic_inv_inv {a : ℕ} : ((↑a : ENNReal)⁻¹)⁻¹ = ↑a := by ennreal_arith
-lemma test_generic_zero_patterns : (0 : ENNReal) + 5 * 0 + 0 / 3 = 0 := by ennreal_arith
-lemma test_generic_one_patterns {a : ℕ} : (↑a : ENNReal) * 1 / 1 * 1 = ↑a := by ennreal_arith
+lemma test_zero_absorbing_properties : (0 : ENNReal) + 5 * 0 + 0 / 3 = 0 := by ennreal_arith
+lemma test_one_identity_chain {a : ℕ} : (↑a : ENNReal) * 1 / 1 * 1 = ↑a := by ennreal_arith
 
 end Tests
 

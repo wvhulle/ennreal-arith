@@ -92,77 +92,44 @@ elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
 
 section TestSuite
 
-
-lemma ennreal_mul_div_assoc_manual {a b c : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑a * ↑b : ENNReal) / (↑c : ENNReal) := by
-  rw [mul_div]
-
-lemma ennreal_mul_div_assoc_basic {a b c : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑a * ↑b : ENNReal) / (↑c : ENNReal) := by
+-- Multiplication-division associativity lemmas
+lemma test_mul_div_associativity_right {a b c : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑a * ↑b : ENNReal) / (↑c : ENNReal) := by
   ennreal_mul_div_assoc
 
-lemma ennreal_mul_div_assoc_reverse_manual {a b c : ℕ} : (↑a * ↑b : ENNReal) / (↑c : ENNReal) = (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) := by
-  rw [← mul_div]
-
-lemma ennreal_mul_div_assoc_reverse {a b c : ℕ} : (↑a * ↑b : ENNReal) / (↑c : ENNReal) = (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) := by
+lemma test_mul_div_associativity_left {a b c : ℕ} : (↑a * ↑b : ENNReal) / (↑c : ENNReal) = (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) := by
   ennreal_mul_div_assoc
 
-lemma ennreal_mul_div_two_three_five_manual : (↑2 : ENNReal) * ((↑3 : ENNReal) / (↑5 : ENNReal)) = (↑2 * ↑3 : ENNReal) / (↑5 : ENNReal) := by
-  rw [mul_div]
-
-lemma ennreal_mul_div_two_three_five : (↑2 : ENNReal) * ((↑3 : ENNReal) / (↑5 : ENNReal)) = (↑2 * ↑3 : ENNReal) / (↑5 : ENNReal) := by
+-- Concrete associativity examples
+lemma test_mul_div_associativity_concrete_2_3_5 : (↑2 : ENNReal) * ((↑3 : ENNReal) / (↑5 : ENNReal)) = (↑2 * ↑3 : ENNReal) / (↑5 : ENNReal) := by
   ennreal_mul_div_assoc
 
-lemma ennreal_mul_div_four_seven_manual : (↑4 : ENNReal) * ((↑1 : ENNReal) / (↑7 : ENNReal)) = (↑4 * ↑1 : ENNReal) / (↑7 : ENNReal) := by
-  rw [mul_div]
-
-lemma ennreal_mul_div_four_seven : (↑4 : ENNReal) * ((↑1 : ENNReal) / (↑7 : ENNReal)) = (↑4 * ↑1 : ENNReal) / (↑7 : ENNReal) := by
+lemma test_mul_div_associativity_concrete_4_1_7 : (↑4 : ENNReal) * ((↑1 : ENNReal) / (↑7 : ENNReal)) = (↑4 * ↑1 : ENNReal) / (↑7 : ENNReal) := by
   ennreal_mul_div_assoc
 
-
-lemma ennreal_mul_div_cast_manual {a b c : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = ↑(a * b) / (↑c : ENNReal) := by
-  rw [mul_div]
-  norm_cast
-
-lemma ennreal_mul_div_cast {a b c : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = ↑(a * b) / (↑c : ENNReal) := by
+-- Cast preservation
+lemma test_mul_div_associativity_preserves_cast {a b c : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = ↑(a * b) / (↑c : ENNReal) := by
   ennreal_mul_div_assoc
 
-
-lemma ennreal_mul_div_chain_manual {a b c d : ℕ} : ((↑a : ENNReal) * (↑b : ENNReal)) * ((↑c : ENNReal) / (↑d : ENNReal)) = (↑a * ↑b * ↑c : ENNReal) / (↑d : ENNReal) := by
-  rw [mul_div, mul_assoc]
-
-lemma ennreal_mul_div_chain {a b c d : ℕ} : ((↑a : ENNReal) * (↑b : ENNReal)) * ((↑c : ENNReal) / (↑d : ENNReal)) = (↑a * ↑b * ↑c : ENNReal) / (↑d : ENNReal) := by
+-- Chain operations
+lemma test_mul_div_associativity_chain {a b c d : ℕ} : ((↑a : ENNReal) * (↑b : ENNReal)) * ((↑c : ENNReal) / (↑d : ENNReal)) = (↑a * ↑b * ↑c : ENNReal) / (↑d : ENNReal) := by
   ennreal_mul_div_assoc
 
-
-lemma ennreal_mul_div_one_manual {a b : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / 1) = (↑a * ↑b : ENNReal) / 1 := by
-  rw [mul_div]
-
-lemma ennreal_mul_div_one {a b : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / 1) = (↑a * ↑b : ENNReal) / 1 := by
+-- Special cases
+lemma test_mul_div_associativity_denominator_one {a b : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / 1) = (↑a * ↑b : ENNReal) / 1 := by
   ennreal_mul_div_assoc
 
-lemma ennreal_one_mul_div_manual {b c : ℕ} : (1 : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (1 * ↑b : ENNReal) / (↑c : ENNReal) := by
-  rw [mul_div]
-
-lemma ennreal_one_mul_div {b c : ℕ} : (1 : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (1 * ↑b : ENNReal) / (↑c : ENNReal) := by
+lemma test_mul_div_associativity_multiplier_one {b c : ℕ} : (1 : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (1 * ↑b : ENNReal) / (↑c : ENNReal) := by
   ennreal_mul_div_assoc
 
-
-lemma ennreal_div_mul_cancel_manual {a : ℕ} (ha : a ≠ 0) : (1 / (↑a : ENNReal)) * ↑a = 1 := by
-  rw [ENNReal.div_mul_cancel]
-  · exact ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr ha)
-  · exact ENNReal.coe_ne_top
-
-lemma ennreal_div_mul_cancel {a : ℕ} (ha : a ≠ 0) : (1 / (↑a : ENNReal)) * ↑a = 1 := by
+-- Reciprocal identity
+lemma test_reciprocal_multiplication_identity {a : ℕ} (ha : a ≠ 0) : (1 / (↑a : ENNReal)) * ↑a = 1 := by
   ennreal_mul_div_assoc
 
-
-lemma ennreal_div_mul_right_manual {a b c : ℕ} : ((↑a : ENNReal) / (↑b : ENNReal)) * (↑c : ENNReal) = (↑a * ↑c : ENNReal) / (↑b : ENNReal) := by
-  rw [ENNReal.mul_comm_div]
-  rw [mul_div]
-
-lemma ennreal_div_mul_right {a b c : ℕ} : ((↑a : ENNReal) / (↑b : ENNReal)) * (↑c : ENNReal) = (↑a * ↑c : ENNReal) / (↑b : ENNReal) := by
+-- Division-multiplication associativity
+lemma test_div_mul_associativity {a b c : ℕ} : ((↑a : ENNReal) / (↑b : ENNReal)) * (↑c : ENNReal) = (↑a * ↑c : ENNReal) / (↑b : ENNReal) := by
   ennreal_mul_div_assoc
 
-lemma ennreal_div_mul_concrete : ((↑6 : ENNReal) / (↑2 : ENNReal)) * (↑3 : ENNReal) = (↑6 * ↑3 : ENNReal) / (↑2 : ENNReal) := by
+lemma test_div_mul_associativity_concrete_6_2_3 : ((↑6 : ENNReal) / (↑2 : ENNReal)) * (↑3 : ENNReal) = (↑6 * ↑3 : ENNReal) / (↑2 : ENNReal) := by
   ennreal_mul_div_assoc
 
 end TestSuite
