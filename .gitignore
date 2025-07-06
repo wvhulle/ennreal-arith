@@ -1,2 +1,4 @@
 /.lake
 .claude
+.aider*
+.mcp.json

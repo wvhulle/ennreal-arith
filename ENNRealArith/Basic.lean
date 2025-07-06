@@ -13,25 +13,24 @@ open ENNReal
 
 namespace ENNRealArith
 
+/--
+Main ENNReal arithmetic tactic that combines multiple specialized tactics.
+Tries basic simplification, division by self, multiplication cancellation,
+multiplication/division associativity, inverse patterns, and fraction addition.
+-/
 syntax "ennreal_arith" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_arith) => do
-  let tactics : Array (TSyntax `tactic) := #[
-    ← `(tactic| ennreal_basic_simp),
-    ← `(tactic| ennreal_div_self),
-    ← `(tactic| ennreal_mul_cancel),
-    ← `(tactic| ennreal_mul_div_assoc),
-    ← `(tactic| ennreal_inv_patterns),
-    <- `(tactic| ennreal_fraction_add)
-  ]
+  let tactics : TSyntax `tactic := ← `(tactic| first
+    | ennreal_basic_simp
+    | ennreal_div_self
+    | ennreal_mul_cancel
+    | ennreal_mul_div_assoc
+    | ennreal_inv_patterns
+    | ennreal_fraction_add
+    | fail "ennreal_arith could not solve the goal")
 
-  for tac in tactics do
-    try
-      evalTactic tac
-      if (← getUnsolvedGoals).isEmpty then return
-    catch _ => continue
-
-  throwError "ennreal_arith could not solve the goal"
+  evalTactic tactics
 
 section Tests
 
@@ -63,9 +62,16 @@ lemma test_inv_mul {a b : ℕ} :
 
 lemma test_complex : (↑2 : ENNReal) * 1 + ↑3 * 0 + ↑5 = ↑7 := by ennreal_arith
 
-
-
+lemma test_generic_add {a b : ℕ} : (↑a : ENNReal) + ↑b = ↑(a + b) := by ennreal_arith
+lemma test_generic_mul {a b : ℕ} : (↑a : ENNReal) * ↑b = ↑(a * b) := by ennreal_arith
+lemma test_generic_div_self {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by ennreal_arith
+lemma test_generic_mul_div {a b c : ℕ} : (↑a : ENNReal) * (↑b / ↑c) = (↑a * ↑b) / ↑c := by ennreal_arith
+lemma test_generic_inv_inv {a : ℕ} : ((↑a : ENNReal)⁻¹)⁻¹ = ↑a := by ennreal_arith
+lemma test_generic_zero_patterns : (0 : ENNReal) + 5 * 0 + 0 / 3 = 0 := by ennreal_arith
+lemma test_generic_one_patterns {a : ℕ} : (↑a : ENNReal) * 1 / 1 * 1 = ↑a := by ennreal_arith
 
 end Tests
 
 end ENNRealArith
+
+#lint

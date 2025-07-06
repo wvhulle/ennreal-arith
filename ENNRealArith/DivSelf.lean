@@ -1,44 +1,27 @@
-import Mathlib.Data.ENNReal.Basic
-import Mathlib.Data.ENNReal.Real
-import Mathlib.Data.ENNReal.Inv
-import Mathlib.Tactic.Ring
-import Mathlib.Tactic.Linarith
-import Mathlib.Tactic.FieldSimp
+import ENNRealArith.Common
+
 open Lean Meta Elab Tactic
 open ENNReal
 
 namespace ENNRealArith
 
+/--
+Tactic for proving ENNReal division by self equals 1.
+Handles goals of the form `(↑a : ENNReal) / ↑a = 1` where `a : ℕ`.
+-/
 syntax "ennreal_div_self" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_div_self) => do
-  let goal ← getMainGoal
-  goal.withContext do
-    let tryNonzeroProof : TacticM Unit := do
-      try
-        evalTactic (← `(tactic| assumption))
-      catch _ =>
-        try
-          evalTactic (← `(tactic| apply ne_of_gt; assumption))
-        catch _ =>
-          try
-            evalTactic (← `(tactic| norm_num))
-          catch _ =>
-            try
-              evalTactic (← `(tactic| exact Nat.succ_ne_zero _))
-            catch _ =>
-              throwError "Could not prove nonzero condition"
+  try
+    evalTactic (← `(tactic| apply ENNReal.div_self))
+    evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
+    evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
+    tryNonzeroProof
+    evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
+    if (← getUnsolvedGoals).isEmpty then return
+  catch _ => pure ()
 
-    try
-      evalTactic (← `(tactic| apply ENNReal.div_self))
-      evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-      evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-      tryNonzeroProof
-      evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-      if (← getUnsolvedGoals).isEmpty then return
-    catch _ => pure ()
-
-    throwError "ennreal_div_self could not solve the goal"
+  throwError "ennreal_div_self could not solve the goal"
 
 
 
@@ -79,3 +62,5 @@ lemma ennreal_div_succ_succ {n : ℕ} : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 
 end TestSuite
 
 end ENNRealArith
+
+#lint

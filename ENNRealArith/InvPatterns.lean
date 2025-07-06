@@ -1,28 +1,19 @@
-import Mathlib.Data.ENNReal.Basic
-import Mathlib.Data.ENNReal.Real
-import Mathlib.Data.ENNReal.Inv
-import Mathlib.Tactic.Ring
-import Mathlib.Tactic.Linarith
-import Mathlib.Tactic.FieldSimp
+import ENNRealArith.Common
 
 open Lean Meta Elab Tactic
 open ENNReal
 
 namespace ENNRealArith
 
+/--
+Tactic for handling ENNReal inverse and division patterns.
+Handles complex patterns involving inverses, divisions, and multiplications.
+-/
 syntax "ennreal_inv_patterns" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
   let goal ← getMainGoal
   goal.withContext do
-    let tryPattern (tac : TSyntax `tactic) : TacticM Bool := do
-      try
-        let goals_before ← getUnsolvedGoals
-        if goals_before.isEmpty then return true
-        evalTactic tac
-        let goals_after ← getUnsolvedGoals
-        return goals_after.isEmpty
-      catch _ => return false
 
 
     let tactics : Array (TSyntax `tactic) := #[
@@ -123,7 +114,7 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
     if ← invFracMulFracPatternEarly then return
 
     for tac in tactics do
-      if ← tryPattern tac then return
+      if ← tryTactic tac then return
 
 
     let divEqDivIff : TacticM Bool := do
@@ -168,7 +159,7 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
     if ← simpThenRw then return
     if ← generalSimpThenRw then return
 
-    if ← tryPattern (← `(tactic| norm_num)) then return
+    if ← tryTactic (← `(tactic| norm_num)) then return
 
     throwError "ennreal_inv_patterns could not solve the goal"
 

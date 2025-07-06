@@ -1,15 +1,14 @@
-import Mathlib.Data.ENNReal.Basic
-import Mathlib.Data.ENNReal.Real
-import Mathlib.Data.ENNReal.Inv
-import Mathlib.Tactic.Ring
-import Mathlib.Tactic.Linarith
-import Mathlib.Tactic.FieldSimp
+import ENNRealArith.Common
 
 open Lean Meta Elab Tactic
 open ENNReal
 
 namespace ENNRealArith
 
+/--
+Tactic for canceling common factors in ENNReal multiplication/division expressions.
+Handles patterns like `(↑(a * c) : ENNReal) / (↑(b * c)) = (↑a) / (↑b)`.
+-/
 syntax "ennreal_mul_cancel" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
@@ -22,15 +21,7 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
       if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
 
-    let tryNonzeroProof : TacticM Unit := do
-      try evalTactic (← `(tactic| assumption)); return
-      catch _ => pure ()
-      try evalTactic (← `(tactic| apply ne_of_gt; assumption)); return
-      catch _ => pure ()
-      try evalTactic (← `(tactic| norm_num)); return
-      catch _ => pure ()
-      try evalTactic (← `(tactic| exact Nat.succ_ne_zero _)); return
-      catch _ => throwError "Could not prove nonzero condition"
+    -- Use the common nonzero proof function
 
     let tryCancel : TacticM Bool := do
       try

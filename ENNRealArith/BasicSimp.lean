@@ -1,61 +1,37 @@
-import Mathlib.Data.ENNReal.Basic
-import Mathlib.Data.ENNReal.Real
-import Mathlib.Data.ENNReal.Inv
-import Mathlib.Tactic.Ring
-import Mathlib.Tactic.Linarith
-import Mathlib.Tactic.FieldSimp
-
-open Lean Meta Elab Tactic
-open ENNReal
+import ENNRealArith.Common
 
 namespace ENNRealArith
 
+/-- 
+Tactic for basic ENNReal simplifications using norm_num, norm_cast, and simp.
+Tries various combinations of these tactics to solve simple arithmetic goals.
+-/
 syntax "ennreal_basic_simp" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_basic_simp) => do
-  let goal ← getMainGoal
-  goal.withContext do
-    let tryTactics (tactics : List (TSyntax `tactic)) : TacticM Bool := do
-      try
-        for tac in tactics do evalTactic tac
-        return (← getUnsolvedGoals).isEmpty
-      catch _ => return false
+  -- Try basic computation first
+  if ← tryBasicComputation then return
+  
+  -- Try simp with common lemmas  
+  if ← tryTactic (← `(tactic| simp)) then return
+  
+  -- Try more targeted approaches
+  let tacticSequences := [
+    [← `(tactic| norm_cast), ← `(tactic| norm_num)],
+    [← `(tactic| simp only [add_zero, zero_add, inv_eq_one_div])],
+    [← `(tactic| simp only [add_zero, zero_add]), ← `(tactic| norm_num)],
+    [← `(tactic| rw [ENNReal.div_eq_div_iff]), ← `(tactic| all_goals norm_num)]
+  ]
 
-    let tacticSequences := [
-      [← `(tactic| norm_num)],
-      [← `(tactic| norm_cast)],
-      [← `(tactic| simp)],
-      [← `(tactic| norm_cast), ← `(tactic| norm_num)],
+  for sequence in tacticSequences do
+    if ← tryTacticSequence sequence then return
 
-      [← `(tactic| simp only [add_zero, zero_add, inv_eq_one_div])],
-      [← `(tactic| simp only [add_zero, zero_add]), ← `(tactic| norm_num)],
-      [← `(tactic| rw [ENNReal.div_eq_div_iff]), ← `(tactic| all_goals norm_num)]
-    ]
-
-    for sequence in tacticSequences do
-      if ← tryTactics sequence then return
-
-    throwError "ennreal_basic_simp could not solve the goal"
+  throwError "ennreal_basic_simp could not solve the goal"
 
 section TestSuite
 
-lemma ennreal_zero_cast_manual : (↑0 : ENNReal) = 0 := by
-  norm_cast
-
-lemma ennreal_zero_cast : (↑0 : ENNReal) = 0 := by
-  ennreal_basic_simp
-
-lemma ennreal_one_cast_manual : (↑1 : ENNReal) = 1 := by
-  norm_cast
-
-lemma ennreal_one_cast : (↑1 : ENNReal) = 1 := by
-  ennreal_basic_simp
-
-lemma ennreal_two_cast_manual : (↑2 : ENNReal) = 2 := by
-  norm_cast
-
-lemma ennreal_two_cast : (↑2 : ENNReal) = 2 := by
-  ennreal_basic_simp
+-- Note: Basic cast lemmas like (↑0 : ENNReal) = 0 are syntactic tautologies
+-- and are automatically handled by Lean, so we don't need explicit lemmas for them
 
 
 
@@ -164,3 +140,5 @@ lemma ennreal_sub_cast {a b : ℕ} : (↑a : ENNReal) - ↑b = ↑(a - b) := by
 end TestSuite
 
 end ENNRealArith
+
+#lint
