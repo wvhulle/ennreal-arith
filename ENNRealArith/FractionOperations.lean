@@ -160,6 +160,7 @@ elab_rules : tactic | `(tactic| ennreal_fraction_add) => do
       ← `(tactic| all_goals norm_num),
     ]
 
+
 -- =============================================
 -- TEST SUITES
 -- =============================================
@@ -193,7 +194,7 @@ section InvPatternTests
 lemma test_inverse_multiplication_to_division {a b : ℕ} (ha : a ≠ 0) :
   (↑a : ENNReal)⁻¹ * (↑b : ENNReal) = (↑b : ENNReal) / (↑a : ENNReal) := by ennreal_inv_transform
 
-lemma test_division_as_inverse_multiplication {a b : ℕ} : 
+lemma test_division_as_inverse_multiplication {a b : ℕ} :
   (↑a : ENNReal) / (↑b : ENNReal) = (↑a : ENNReal) * (↑b : ENNReal)⁻¹ := by ennreal_inv_transform
 
 -- Double inverse property
@@ -224,6 +225,8 @@ lemma test_basic_arithmetic : (2 : ENNReal) + 3 = 5 := by
 
 lemma test_zero_addition : (1 : ENNReal) / 6 + 0 = 1 / 6 := by
   ennreal_fraction_add
+
+
 
 end FractionAddTests
 

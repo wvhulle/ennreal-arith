@@ -10,7 +10,7 @@ namespace ENNRealArith
 
 This module contains the fundamental arithmetic tactics for ENNReal:
 - Basic simplification (`ennreal_basic_simp`)
-- Division by self patterns (`ennreal_div_self`)  
+- Division by self patterns (`ennreal_div_self`)
 - Multiplication cancellation (`ennreal_mul_cancel`)
 
 These form the foundation for more complex ENNReal arithmetic automation.
@@ -53,7 +53,8 @@ Handles goals of the form `(↑a : ENNReal) / ↑a = 1` where `a : ℕ`.
 -/
 syntax "ennreal_div_self" : tactic
 
-elab_rules : tactic | `(tactic| ennreal_div_self) => do
+elab_rules : tactic | `(tactic| ennreal_div_self) =>  do
+
   try
     evalTactic (← `(tactic| apply ENNReal.div_self))
     evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
@@ -78,7 +79,6 @@ syntax "ennreal_mul_cancel" : tactic
 elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
   let goal ← getMainGoal
   goal.withContext do
-
     try
       evalTactic (← `(tactic| simp only [Nat.cast_mul, zero_mul, mul_one, one_mul, mul_zero,
                                         ENNReal.zero_div, Nat.cast_zero, Nat.cast_one]))
@@ -139,8 +139,18 @@ end BasicSimpTests
 
 section DivSelfTests
 
+
+-- Currently fails!
+
 -- Core division by self functionality
-lemma test_division_self_nonzero {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by ennreal_div_self
+lemma test_division_self_nonzero {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by
+  ennreal_div_self
+
+lemma test_division_self_nonzero_manual {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by
+  apply ENNReal.div_self
+  · exact ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr (by assumption))
+  · exact ENNReal.coe_ne_top
+
 lemma test_division_self_successor {n : ℕ} : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 := by ennreal_div_self
 
 -- Concrete examples
