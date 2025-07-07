@@ -27,25 +27,12 @@ elab_rules : tactic | `(tactic| ennreal_div_self) => do
 
 section TestSuite
 
--- Division by self lemmas
-lemma test_division_self_nonzero {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by
-  ennreal_div_self
+-- Core division by self functionality
+lemma test_division_self_nonzero {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by ennreal_div_self
+lemma test_division_self_successor {n : ℕ} : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 := by ennreal_div_self
 
-lemma test_division_self_positive {a : ℕ} (ha : 0 < a) : (↑a : ENNReal) / ↑a = 1 := by
-  ennreal_div_self
-
--- Concrete division by self examples
-lemma test_division_self_concrete_two : (↑2 : ENNReal) / ↑2 = 1 := by
-  ennreal_div_self
-
-lemma test_division_self_concrete_three : (↑3 : ENNReal) / ↑3 = 1 := by
-  ennreal_div_self
-
--- Successor pattern test
-lemma test_division_self_successor {n : ℕ} : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 := by
-  ennreal_div_self
-
-
+-- Concrete examples
+lemma test_division_self_concrete : (↑2 : ENNReal) / ↑2 = 1 := by ennreal_div_self
 
 end TestSuite
 

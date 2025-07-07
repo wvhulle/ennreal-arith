@@ -57,9 +57,11 @@ def tryTactic (tac : TSyntax `tactic) : TacticM Bool := do
   catch _ => return false
 
 /--
-Common simp lemmas used across ENNReal tactics.
+Standard simplification lemmas for ENNReal arithmetic operations.
+Includes basic arithmetic identities, commutativity, associativity,
+and ENNReal-specific lemmas for division and casting.
 -/
-def commonSimpLemmas : List Name := [
+def standardENNRealSimpLemmas : List Name := [
   `add_zero, `zero_add, `mul_one, `one_mul, `mul_zero, `zero_mul,
   `div_one, `one_div, `inv_inv, `mul_comm, `mul_assoc, `mul_left_comm,
   `ENNReal.div_eq_inv_mul, `ENNReal.zero_div, `Nat.cast_mul, `Nat.cast_zero, `Nat.cast_one
@@ -77,6 +79,27 @@ def tryBasicComputation : TacticM Bool := do
   for tac in basicTactics do
     if ← tryTactic tac then return true
   return false
+
+/--
+Common pattern for ENNReal arithmetic tactics - tries basic computation,
+then simplification, then custom sequences.
+-/
+def tryStandardENNRealTactics : TacticM Bool := do
+  -- Try basic computation first
+  if ← tryBasicComputation then return true
+  
+  -- Try standard simp
+  if ← tryTactic (← `(tactic| simp only [add_zero, zero_add, mul_one, one_mul, mul_zero, zero_mul, div_one])) then return true
+  
+  return false
+
+/--
+Helper for creating ENNReal tactic with standard error message.
+-/
+def createENNRealTactic (tacticName : String) (customLogic : TacticM Bool) : TacticM Unit := do
+  if ← tryStandardENNRealTactics then return
+  if ← customLogic then return
+  throwError s!"{tacticName} could not solve the goal"
 
 
 /-- Repeatedly apply a tactic while it makes progress -/

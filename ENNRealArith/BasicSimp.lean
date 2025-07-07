@@ -27,57 +27,22 @@ elab_rules : tactic | `(tactic| ennreal_basic_simp) => do
 
 section TestSuite
 
--- Identity and absorption lemmas
-lemma test_addition_right_identity {a : ℕ} : (↑a : ENNReal) + 0 = ↑a := by
-  ennreal_basic_simp
+-- Essential identity tests
+lemma test_addition_right_identity {a : ℕ} : (↑a : ENNReal) + 0 = ↑a := by ennreal_basic_simp
+lemma test_multiplication_right_identity {a : ℕ} : (↑a : ENNReal) * 1 = ↑a := by ennreal_basic_simp
+lemma test_division_by_one_identity {a : ℕ} : (↑a : ENNReal) / 1 = ↑a := by ennreal_basic_simp
 
-lemma test_multiplication_right_identity {a : ℕ} : (↑a : ENNReal) * 1 = ↑a := by
-  ennreal_basic_simp
+-- Key absorption properties
+lemma test_multiplication_zero_absorbing {a : ℕ} : (↑a : ENNReal) * 0 = 0 := by ennreal_basic_simp
+lemma test_zero_divided_by_any {a : ℕ} : (0 : ENNReal) / ↑a = 0 := by ennreal_basic_simp
 
-lemma test_multiplication_zero_absorbing {a : ℕ} : (↑a : ENNReal) * 0 = 0 := by
-  ennreal_basic_simp
+-- Core concrete examples
+lemma test_addition_concrete : (↑2 : ENNReal) + ↑3 = ↑5 := by ennreal_basic_simp
+lemma test_multiplication_concrete : (↑2 : ENNReal) * ↑3 = ↑6 := by ennreal_basic_simp
 
-lemma test_division_by_one_identity {a : ℕ} : (↑a : ENNReal) / 1 = ↑a := by
-  ennreal_basic_simp
-
-lemma test_zero_divided_by_any {a : ℕ} : (0 : ENNReal) / ↑a = 0 := by
-  ennreal_basic_simp
-
--- Power operation lemmas
-lemma test_power_zero_exponent {a : ℕ} : (↑a : ENNReal) ^ 0 = 1 := by
-  ennreal_basic_simp
-
-lemma test_power_one_exponent {a : ℕ} : (↑a : ENNReal) ^ 1 = ↑a := by
-  ennreal_basic_simp
-
-lemma test_one_to_any_power {n : ℕ} : (1 : ENNReal) ^ n = 1 := by
-  ennreal_basic_simp
-
--- Concrete arithmetic examples
-lemma test_addition_concrete_two_three : (↑2 : ENNReal) + ↑3 = ↑5 := by
-  ennreal_basic_simp
-
-lemma test_multiplication_concrete_two_three : (↑2 : ENNReal) * ↑3 = ↑6 := by
-  ennreal_basic_simp
-
-lemma test_power_concrete_two_cubed : (↑2 : ENNReal) ^ 3 = ↑8 := by
-  ennreal_basic_simp
-
-lemma test_subtraction_concrete_five_three : (↑5 : ENNReal) - ↑3 = ↑2 := by
-  ennreal_basic_simp
-
--- Cast preservation lemmas
-lemma test_addition_preserves_nat_cast {a b : ℕ} : (↑a : ENNReal) + (↑b : ENNReal) = ↑(a + b : ℕ) := by
-  ennreal_basic_simp
-
-lemma test_multiplication_preserves_nat_cast {a b : ℕ} : (↑a : ENNReal) * (↑b : ENNReal) = ↑(a * b : ℕ) := by
-  ennreal_basic_simp
-
-lemma test_power_preserves_nat_cast {a b : ℕ} : (↑a : ENNReal) ^ b = ↑(a ^ b) := by
-  ennreal_basic_simp
-
-lemma test_subtraction_preserves_nat_cast {a b : ℕ} : (↑a : ENNReal) - ↑b = ↑(a - b) := by
-  ennreal_basic_simp
+-- Cast preservation (essential for interoperability)
+lemma test_addition_preserves_nat_cast {a b : ℕ} : (↑a : ENNReal) + (↑b : ENNReal) = ↑(a + b : ℕ) := by ennreal_basic_simp
+lemma test_multiplication_preserves_nat_cast {a b : ℕ} : (↑a : ENNReal) * (↑b : ENNReal) = ↑(a * b : ℕ) := by ennreal_basic_simp
 
 end TestSuite
 

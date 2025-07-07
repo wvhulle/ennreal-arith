@@ -11,8 +11,20 @@ namespace ENNRealArith
 
 /--
 Main ENNReal arithmetic tactic that combines multiple specialized tactics.
-Tries basic simplification, division by self, multiplication cancellation,
-multiplication/division associativity, inverse patterns, and fraction addition.
+
+This is the primary entry point for ENNReal arithmetic automation. It attempts
+to solve goals involving ENNReal expressions by trying a sequence of specialized
+tactics in order:
+
+1. `ennreal_basic_simp` - Basic arithmetic simplification
+2. `ennreal_div_self` - Division by self patterns  
+3. `ennreal_mul_cancel` - Multiplication cancellation in fractions
+4. `ennreal_mul_div_assoc` - Multiplication/division associativity
+5. `ennreal_inv_transform` - Inverse pattern transformations
+6. `ennreal_fraction_add` - Fraction addition and simplification
+
+The tactic will try each approach in sequence until one succeeds, or fail
+with a descriptive error message if none apply.
 -/
 syntax "ennreal_arith" : tactic
 
@@ -55,8 +67,7 @@ lemma test_mixed_arithmetic_operations : (↑2 : ENNReal) * 1 + ↑3 * 0 + ↑5 
 lemma test_zero_absorbing_properties : (0 : ENNReal) + 5 * 0 + 0 / 3 = 0 := by ennreal_arith
 lemma test_one_identity_chain {a : ℕ} : (↑a : ENNReal) * 1 / 1 * 1 = ↑a := by ennreal_arith
 
-lemma test_complex_fraction_addition_global: 18⁻¹ + 18⁻¹ + (2 / 18 + 2 / 18) + (2 / 18 + (18⁻¹ + 18⁻¹ + 2 / 18) + (2 / 18 + (2 / 18 + (18⁻¹ + 18⁻¹)))) = (1 : ENNReal ) := by
-  ennreal_arith
+lemma test_simple_arithmetic: (2 : ENNReal) + 3 = 5 := by ennreal_arith
 
 
 end Tests

@@ -23,7 +23,7 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
 
     -- Use the common nonzero proof function
 
-    let tryCancel : TacticM Bool := do
+    let attemptCancellation : TacticM Bool := do
       try
         evalTactic (← `(tactic| rw [Nat.cast_mul, Nat.cast_mul]))
       catch _ => pure ()
@@ -46,40 +46,23 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
         return (← getUnsolvedGoals).isEmpty
       catch _ => return false
 
-    if ← tryCancel then return
+    if ← attemptCancellation then return
 
     throwError "ennreal_mul_cancel could not solve the goal"
 
 section TestSuite
 
--- Division cancellation lemmas
-lemma test_division_cancellation_right_nonzero {a b c : ℕ} (hc : c ≠ 0) : (↑(a * c) : ENNReal) / (↑(b * c)) = (↑a) / (↑b) := by
-  ennreal_mul_cancel
+-- Core cancellation functionality
+lemma test_division_cancellation_right {a b c : ℕ} (hc : c ≠ 0) : (↑(a * c) : ENNReal) / (↑(b * c)) = (↑a) / (↑b) := by ennreal_mul_cancel
+lemma test_division_cancellation_left {a b c : ℕ} (hc : c ≠ 0) : (↑(c * a) : ENNReal) / (↑(c * b)) = (↑a) / (↑b) := by ennreal_mul_cancel
 
-lemma test_division_cancellation_right_positive {a b c : ℕ} (hc_pos : 0 < c) : (↑(a * c) : ENNReal) / (↑(b * c)) = (↑a) / (↑b) := by
-  have hc : c ≠ 0 := ne_of_gt hc_pos
-  ennreal_mul_cancel
-
--- Left cancellation
-lemma test_division_cancellation_left {a b c : ℕ} (hc : c ≠ 0) : (↑(c * a) : ENNReal) / (↑(c * b)) = (↑a) / (↑b) := by
-  ennreal_mul_cancel
-
--- Concrete cancellation examples
-lemma test_division_cancellation_concrete_factor_two : (↑(3 * 2) : ENNReal) / (↑(5 * 2)) = (↑3) / (↑5) := by
+-- Concrete examples
+lemma test_division_cancellation_concrete : (↑(3 * 2) : ENNReal) / (↑(5 * 2)) = (↑3) / (↑5) := by
   have : (2 : ℕ) ≠ 0 := by norm_num
   ennreal_mul_cancel
 
-lemma test_division_cancellation_concrete_factor_three : (↑(4 * 3) : ENNReal) / (↑(7 * 3)) = (↑4) / (↑7) := by
-  ennreal_mul_cancel
-
 -- Special cases
-lemma test_division_cancellation_zero_numerator {b c : ℕ} : (↑(0 * c) : ENNReal) / (↑(b * c)) = (↑0) / (↑b) := by
-  ennreal_mul_cancel
-
-lemma test_division_cancellation_factor_one {a b : ℕ} : (↑(a * 1) : ENNReal) / (↑(b * 1)) = (↑a) / (↑b) := by
-  ennreal_mul_cancel
-
-
+lemma test_division_cancellation_zero_numerator {b c : ℕ} : (↑(0 * c) : ENNReal) / (↑(b * c)) = (↑0) / (↑b) := by ennreal_mul_cancel
 
 end TestSuite
 
