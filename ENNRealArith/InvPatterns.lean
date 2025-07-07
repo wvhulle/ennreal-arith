@@ -1,4 +1,5 @@
 import ENNRealArith.Common
+import ENNRealArith.DivSelf
 
 open Lean Meta Elab Tactic
 open ENNReal
@@ -158,6 +159,12 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
     if ← mulInvToDivPattern then return
     if ← simpThenRw then return
     if ← generalSimpThenRw then return
+
+    -- Pattern for a / a = 1 (like 18 / 18 = 1)
+    if ← tryTactic (← `(tactic| ennreal_div_self)) then return
+    
+    -- Pattern for numeric literals like 18 / 18 = 1
+    if ← tryTactic (← `(tactic| (norm_cast; ennreal_div_self))) then return
 
     if ← tryTactic (← `(tactic| norm_num)) then return
 
