@@ -1,9 +1,4 @@
-import Mathlib.Data.ENNReal.Basic
-import Mathlib.Data.ENNReal.Real
-import Mathlib.Data.ENNReal.Inv
-import Mathlib.Tactic.Ring
-import Mathlib.Tactic.Linarith
-import Mathlib.Tactic.FieldSimp
+import ENNRealArith.Common
 
 open Lean Meta Elab Tactic
 open ENNReal
@@ -16,78 +11,16 @@ elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
   let goal ← getMainGoal
   goal.withContext do
 
-    try
-      evalTactic (← `(tactic| simp only [mul_div, div_mul_eq_mul_div, ENNReal.mul_comm_div,
-                                        mul_assoc, one_mul, mul_one, Nat.cast_mul]))
-      if (← getUnsolvedGoals).isEmpty then return
-      -- Try norm_cast if simp didn't fully solve
-      evalTactic (← `(tactic| norm_cast))
-      if (← getUnsolvedGoals).isEmpty then return
-      -- Try norm_num for concrete cases
-      evalTactic (← `(tactic| norm_num))
-      if (← getUnsolvedGoals).isEmpty then return
-    catch _ => pure ()
+    evalTactic (← `(tactic| simp only [mul_div, ENNReal.mul_comm_div,  one_mul, mul_one, Nat.cast_mul]))
+    if (← getUnsolvedGoals).isEmpty then return
 
-    -- Try basic rewrites in the most common direction
-    let basicPatterns := [
-      ← `(tactic| rw [mul_div]),              -- a * (b / c) = (a * b) / c
-      ← `(tactic| rw [div_mul_eq_mul_div]),
-      ← `(tactic| rw [← mul_div]),            -- reverse direction if needed
-      ← `(tactic| rw [← div_mul_eq_mul_div])  -- reverse direction if needed
-    ]
-
-    for pattern in basicPatterns do
-      try
-        evalTactic pattern
-        -- Try to normalize if needed
-        try evalTactic (← `(tactic| norm_cast))
-        catch _ => pure ()
-        if (← getUnsolvedGoals).isEmpty then return
-      catch _ => continue
+    evalTactic (← `(tactic| apply ENNReal.div_self))
+    evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
+    evalTactic (← `(tactic| assumption))
+    evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
 
 
-
-    try
-
-      evalTactic (← `(tactic| simp only [ENNReal.div_mul_cancel]))
-
-      let remainingGoals ← getUnsolvedGoals
-      for goal in remainingGoals do
-        goal.withContext do
-          try
-            -- Try to prove ≠ 0
-            evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-            evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-            evalTactic (← `(tactic| assumption))
-          catch _ =>
-            try
-              -- Try to prove ≠ ⊤
-              evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-            catch _ =>
-
-              evalTactic (← `(tactic| assumption))
-      if (← getUnsolvedGoals).isEmpty then return
-    catch _ => pure ()
-
-
-    try
-      evalTactic (← `(tactic| apply ENNReal.div_self))
-      -- Prove ≠ 0
-      try
-        evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-        evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-        evalTactic (← `(tactic| assumption))
-      catch _ =>
-        evalTactic (← `(tactic| assumption))
-      -- Prove ≠ ⊤
-      try
-        evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-      catch _ =>
-        evalTactic (← `(tactic| assumption))
-      if (← getUnsolvedGoals).isEmpty then return
-    catch _ => pure ()
-
-    throwError "ennreal_mul_div_assoc could not solve the goal"
+    if (← getUnsolvedGoals).isEmpty then return
 
 
 section TestSuite
