@@ -27,19 +27,13 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
     ]
 
 
-    let mulInvEqInvPattern : TacticM Bool := do
-      try
-        evalTactic (← `(tactic| rw [← div_eq_mul_inv, inv_eq_one_div]))
-
-
-        evalTactic (← `(tactic| rw [ENNReal.div_eq_div_iff]))
-
-        evalTactic (← `(tactic| all_goals norm_num))
-        let goals_after ← getUnsolvedGoals
-        return goals_after.isEmpty
-      catch _ => return false
-
-    if ← mulInvEqInvPattern then return
+    -- Try multiplication-inverse equality pattern using sequence
+    let mulInvEqInvTactics : List (TSyntax `tactic) := [
+      ← `(tactic| rw [← div_eq_mul_inv, inv_eq_one_div]),
+      ← `(tactic| rw [ENNReal.div_eq_div_iff]),
+      ← `(tactic| all_goals norm_num)
+    ]
+    if ← tryTacticSequence mulInvEqInvTactics then return
 
 
 
@@ -64,31 +58,24 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
 
 
 
-    let divEqDivIff : TacticM Bool := do
-      try
-        evalTactic (← `(tactic| rw [ENNReal.div_eq_div_iff]))
-        evalTactic (← `(tactic| all_goals norm_num))
-        let goals_after ← getUnsolvedGoals
-        return goals_after.isEmpty
-      catch _ => return false
-
-
-    if ← divEqDivIff then return
+    -- Try division equality pattern using sequence
+    let divEqDivTactics : List (TSyntax `tactic) := [
+      ← `(tactic| rw [ENNReal.div_eq_div_iff]),
+      ← `(tactic| all_goals norm_num)
+    ]
+    if ← tryTacticSequence divEqDivTactics then return
 
 
     if ← tryTactic (← `(tactic| (norm_cast; ennreal_div_self))) then return
 
-    let mulDivCancelPattern : TacticM Bool := do
-      try
-        evalTactic (← `(tactic| rw [inv_eq_one_div]))
-        evalTactic (← `(tactic| rw [← mul_div]))
-        evalTactic (← `(tactic| rw [← mul_div]))
-        evalTactic (← `(tactic| rw [ENNReal.mul_div_cancel (by norm_num) (by norm_num)]))
-        let goals_after ← getUnsolvedGoals
-        return goals_after.isEmpty
-      catch _ => return false
-
-    if ← mulDivCancelPattern then return
+    -- Try multiplication division cancellation pattern using sequence
+    let mulDivCancelTactics : List (TSyntax `tactic) := [
+      ← `(tactic| rw [inv_eq_one_div]),
+      ← `(tactic| rw [← mul_div]),
+      ← `(tactic| rw [← mul_div]),
+      ← `(tactic| rw [ENNReal.mul_div_cancel (by norm_num) (by norm_num)])
+    ]
+    if ← tryTacticSequence mulDivCancelTactics then return
 
     let invMulToDivPattern : TacticM Bool := do
       try
