@@ -19,8 +19,9 @@ elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
     evalTactic (← `(tactic| assumption))
     evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
 
-
     if (← getUnsolvedGoals).isEmpty then return
+
+    throwError "ennreal_mul_div_assoc could not solve the goal"
 
 
 section TestSuite

@@ -5,11 +5,7 @@ import ENNRealArith.MulDivAssoc
 import ENNRealArith.InvPatterns
 import ENNRealArith.FractionAdd
 
-
-import ENNRealArith.Simp
-
-open Lean Meta Elab Tactic
-open ENNReal
+open Lean Meta Elab Tactic ENNReal
 
 namespace ENNRealArith
 
@@ -59,7 +55,8 @@ lemma test_mixed_arithmetic_operations : (↑2 : ENNReal) * 1 + ↑3 * 0 + ↑5 
 lemma test_zero_absorbing_properties : (0 : ENNReal) + 5 * 0 + 0 / 3 = 0 := by ennreal_arith
 lemma test_one_identity_chain {a : ℕ} : (↑a : ENNReal) * 1 / 1 * 1 = ↑a := by ennreal_arith
 
-
+lemma complex_add_fractions_global: 18⁻¹ + 18⁻¹ + (2 / 18 + 2 / 18) + (2 / 18 + (18⁻¹ + 18⁻¹ + 2 / 18) + (2 / 18 + (2 / 18 + (18⁻¹ + 18⁻¹)))) = (1 : ENNReal ) := by
+  ennreal_arith
 
 
 end Tests

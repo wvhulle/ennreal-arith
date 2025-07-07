@@ -17,11 +17,11 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
   goal.withContext do
     -- Try basic reflexivity first
     if ← tryTactic (← `(tactic| rfl)) then return
-    
+
     -- Try a comprehensive simp with common inverse/division lemmas
-    if ← tryTactic (← `(tactic| simp only [mul_one, one_mul, inv_inv, mul_comm, mul_assoc, 
+    if ← tryTactic (← `(tactic| simp only [mul_one, one_mul, inv_inv, mul_comm, mul_assoc,
                                            div_eq_mul_inv, inv_eq_one_div, mul_div, Nat.cast_mul])) then return
-    
+
     let tactics : Array (TSyntax `tactic) := #[
       ← `(tactic| rw [inv_inv]),
       ← `(tactic| rw [mul_one]),
@@ -97,6 +97,7 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
     if ← invMulToDivPattern then return
 
     evalTactic (← `(tactic| all_goals assumption))
+
 
 section TestSuite
 
