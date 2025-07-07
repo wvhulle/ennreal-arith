@@ -22,7 +22,7 @@ elab_rules : tactic | `(tactic| ennreal_arith) => do
     | ennreal_div_self
     | ennreal_mul_cancel
     | ennreal_mul_div_assoc
-    | ennreal_inv_patterns
+    | ennreal_inv_transform
     | ennreal_fraction_add
     | fail "ennreal_arith could not solve the goal")
 
@@ -55,7 +55,7 @@ lemma test_mixed_arithmetic_operations : (↑2 : ENNReal) * 1 + ↑3 * 0 + ↑5 
 lemma test_zero_absorbing_properties : (0 : ENNReal) + 5 * 0 + 0 / 3 = 0 := by ennreal_arith
 lemma test_one_identity_chain {a : ℕ} : (↑a : ENNReal) * 1 / 1 * 1 = ↑a := by ennreal_arith
 
-lemma complex_add_fractions_global: 18⁻¹ + 18⁻¹ + (2 / 18 + 2 / 18) + (2 / 18 + (18⁻¹ + 18⁻¹ + 2 / 18) + (2 / 18 + (2 / 18 + (18⁻¹ + 18⁻¹)))) = (1 : ENNReal ) := by
+lemma test_complex_fraction_addition_global: 18⁻¹ + 18⁻¹ + (2 / 18 + 2 / 18) + (2 / 18 + (18⁻¹ + 18⁻¹ + 2 / 18) + (2 / 18 + (2 / 18 + (18⁻¹ + 18⁻¹)))) = (1 : ENNReal ) := by
   ennreal_arith
 
 

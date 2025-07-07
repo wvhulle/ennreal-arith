@@ -31,7 +31,7 @@ elab_rules : tactic | `(tactic| ennreal_fraction_add) => do
 
   repeatWhileProgress (← `(tactic| rw [← ENNReal.add_div]))
 
-  let _ ← tryTactic (← `(tactic| ennreal_inv_patterns))
+  let _ ← tryTactic (← `(tactic| ennreal_inv_transform))
 
   if !(← getUnsolvedGoals).isEmpty then
     let _ ← tryTacticSequence [
@@ -58,7 +58,7 @@ lemma test_mixed_denominators : (1 : ENNReal) / 18 + 1 / 9 + 0 = 1 / 6 := by
   ennreal_fraction_add
 
 
-lemma complex_add_fractions: 18⁻¹ + 18⁻¹ + (2 / 18 + 2 / 18) + (2 / 18 + (18⁻¹ + 18⁻¹ + 2 / 18) + (2 / 18 + (2 / 18 + (18⁻¹ + 18⁻¹)))) = (1 : ENNReal ) := by
+lemma test_complex_fraction_addition_sum_to_one: 18⁻¹ + 18⁻¹ + (2 / 18 + 2 / 18) + (2 / 18 + (18⁻¹ + 18⁻¹ + 2 / 18) + (2 / 18 + (2 / 18 + (18⁻¹ + 18⁻¹)))) = (1 : ENNReal ) := by
   ennreal_fraction_add
 
 lemma test_fraction_addition_same_denominator : (1 : ENNReal) / 18 + 2 / 18 = 3 / 18 := by

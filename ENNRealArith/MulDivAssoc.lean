@@ -5,6 +5,10 @@ open ENNReal
 
 namespace ENNRealArith
 
+/--
+Tactic for proving ENNReal multiplication-division associativity.
+Handles goals of the form `(↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal)`.
+-/
 syntax "ennreal_mul_div_assoc" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
