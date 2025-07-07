@@ -34,24 +34,29 @@ elab_rules : tactic | `(tactic| ennreal_fraction_add) => do
   let _ ← tryTactic (← `(tactic| ennreal_inv_patterns))
 
   if !(← getUnsolvedGoals).isEmpty then
-    let realConversionSucceeded ← tryTacticSequence [
+    let _ ← tryTacticSequence [
       ← `(tactic| rw [ENNRealArith.ennreal_eq_via_toReal (by norm_num) (by norm_num)]),
       ← `(tactic| rw [ENNReal.toReal_add, ENNReal.toReal_div, ENNReal.toReal_div, ENNReal.toReal_div]),
-      ← `(tactic| norm_num)
+      ← `(tactic| all_goals norm_num),
     ]
 
-    if !realConversionSucceeded then
-      if !(← tryTactic (← `(tactic| rw [ENNReal.div_self (by norm_num) (by norm_num)]))) then
-        if !(← tryTactic (← `(tactic| simp))) then
-          if !(← tryTactic (← `(tactic| norm_num))) then
-            throwError "ennreal_fraction_add could not solve the goal"
+
 
 end ENNRealArith
 
 section TestSuite
 
+lemma test_addition_then_division : ((1 : ENNReal) + 2) / 18 = 1 / 6 := by
+  ennreal_fraction_add
+
+
+lemma test_inverse_pattern_with_context (_h1 : True) (_h2 : 1 + 1 = 2) : (6 : ENNReal) * 18⁻¹ = 3⁻¹ := by
+  ennreal_fraction_add
+
+
 lemma test_mixed_denominators : (1 : ENNReal) / 18 + 1 / 9 + 0 = 1 / 6 := by
   ennreal_fraction_add
+
 
 lemma complex_add_fractions: 18⁻¹ + 18⁻¹ + (2 / 18 + 2 / 18) + (2 / 18 + (18⁻¹ + 18⁻¹ + 2 / 18) + (2 / 18 + (2 / 18 + (18⁻¹ + 18⁻¹)))) = (1 : ENNReal ) := by
   ennreal_fraction_add
