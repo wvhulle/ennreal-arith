@@ -1,9 +1,5 @@
-import ENNRealArith.BasicSimp
-import ENNRealArith.DivSelf
-import ENNRealArith.MulCancel
-import ENNRealArith.MulDivAssoc
-import ENNRealArith.InvPatterns
-import ENNRealArith.FractionAdd
+import ENNRealArith.ArithmeticCore
+import ENNRealArith.FractionOperations
 
 open Lean Meta Elab Tactic ENNReal
 
