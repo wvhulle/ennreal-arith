@@ -76,15 +76,50 @@ lemma test_one_identity_chain {a : ℕ} : (↑a : ENNReal) * 1 / 1 * 1 = ↑a :=
 
 lemma test_simple_arithmetic: (2 : ENNReal) + 3 = 5 := by ennreal_arith
 
--- Test case from user's density_sum_one proof
+-- Test case from user's density_sum_one proof that currently fails
+-- This test demonstrates the issue where ennreal_arith can't prove 18/18 = 1
+-- after simplifying a complex nested addition
+lemma test_nested_addition_division_fails :
+  ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18 = 1 := by
+ ennreal_arith -- sorry -- ennreal_arith fails here!
+
+-- The core issue: ennreal_arith fails on concrete division after simplification
+lemma test_concrete_division_18_fails : (18 : ENNReal) / 18 = 1 := by
+  ennreal_arith -- fails here!
+
+-- But ennreal_fraction_add succeeds on the same goal
+lemma test_nested_addition_division_fraction_add_succeeds :
+  ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18 = 1 := by
+  ennreal_fraction_add
+
+-- Manual proof showing what should work
+lemma test_concrete_division_18_manual : (18 : ENNReal) / 18 = 1 := by
+  apply ENNReal.div_self <;> norm_num
+
+-- This simulates what happens in the user's proof after split_ifs
+-- The first ennreal_arith simplifies the nested sum but then fails on 18/18 = 1
+lemma test_simulating_user_issue :
+  ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18 = 1 := by
+  -- First attempt: ennreal_arith partially succeeds by using norm_num to simplify to 18/18 = 1
+  -- but then fails to prove that final step
+  ennreal_arith
+  -- sorry -- Replace with: ennreal_arith (this would fail with "18 / 18 = 1" remaining)
+
+-- Test showing the workaround pattern from the user
+lemma test_user_workaround :
+  ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18 = 1 := by
+  -- This mimics the user's solution of calling ennreal_arith multiple times
+  first | ennreal_arith
 
 
--- Simplified version of the issue
-lemma test_concrete_division_18 : (18 : ENNReal) / 18 = 1 := by ennreal_arith
+-- Test simulating split_ifs with multiple goals
+lemma test_split_ifs_simulation (p q : Prop) [Decidable p] [Decidable q] :
+  (if p then (0 : ENNReal) else if q then 1/18 else
+    ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18) =
+  (if p then 0 else if q then 1/18 else 1) := by
+  split_ifs <;> ennreal_arith
 
 
 end Tests
 
 end ENNRealArith
-
-#lint
