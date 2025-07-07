@@ -6,6 +6,7 @@ import Mathlib.Tactic.Linarith
 import Mathlib.Tactic.FieldSimp
 
 import ENNRealArith.Common
+import ENNRealArith.ArithmeticCore
 
 set_option linter.docPrime false
 
@@ -138,22 +139,38 @@ syntax "ennreal_fraction_add" : tactic
 /-- Simplify expressions of ENNReals that contain additions and fractions. -/
 elab_rules : tactic | `(tactic| ennreal_fraction_add) => do
   -- First try basic simplification with zero addition
-  if ← tryTactic (← `(tactic| simp only [add_zero, zero_add])) then return
+  -- if ← tryTactic (← `(tactic| simp only [add_zero, zero_add])) then return
 
   -- Try norm_num for simple arithmetic
   if ← tryTactic (← `(tactic| norm_num)) then return
 
+  -- Convert inverses to divisions and simplify nested additions
   let _ ← tryTactic (← `(tactic| simp only [add_assoc, add_zero, zero_add, inv_eq_one_div]))
 
+  -- Repeatedly combine additions with division
   repeatWhileProgress (← `(tactic| rw [← ENNReal.add_div]))
 
+  -- Try inverse transformations
   let _ ← tryTactic (← `(tactic| ennreal_inv_transform))
 
+
+  -- Try division by self for cases like 18/18 = 1
+  if ← tryTactic (← `(tactic| ennreal_div_self)) then return
+
+  -- If still not solved, try the toReal approach
   if !(← getUnsolvedGoals).isEmpty then
     let _ ← tryTacticSequence [
       ← `(tactic| rw [ENNRealArith.ennreal_eq_via_toReal (by norm_num) (by norm_num)]),
       ← `(tactic| rw [ENNReal.toReal_add, ENNReal.toReal_div, ENNReal.toReal_div, ENNReal.toReal_div]),
       ← `(tactic| all_goals norm_num),
+    ]
+
+  -- Final attempt with more aggressive rewriting
+  if !(← getUnsolvedGoals).isEmpty then
+    let _ ← tryTacticSequence [
+      ← `(tactic| simp only [inv_eq_one_div]),
+      ← `(tactic| rw [← ENNReal.add_div]),
+      ← `(tactic| norm_num),
     ]
 
 
@@ -162,6 +179,7 @@ elab_rules : tactic | `(tactic| ennreal_fraction_add) => do
 -- =============================================
 
 section MulDivAssocTests
+
 
 -- Multiplication-division associativity lemmas
 lemma test_mul_div_associativity_right {a b c : ℕ} : (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑a * ↑b : ENNReal) / (↑c : ENNReal) := by
@@ -207,6 +225,12 @@ end InvPatternTests
 
 section FractionAddTests
 
+lemma test_nested_addition_division :
+  ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18 = 1 := by
+  ennreal_fraction_add
+
+
+
 lemma test_addition_then_division : ((1 : ENNReal) + 2) / 18 = 3 / 18 := by
   ennreal_fraction_add
 
@@ -224,6 +248,8 @@ lemma test_zero_addition : (1 : ENNReal) / 6 + 0 = 1 / 6 := by
 
 example: (@OfNat.ofNat ℝ≥0∞ 18 instOfNatAtLeastTwo)⁻¹ + 9⁻¹ = ( 6⁻¹ : ENNReal) := by
   ennreal_fraction_add
+
+
 
 end FractionAddTests
 

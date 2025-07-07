@@ -32,13 +32,14 @@ elab_rules : tactic | `(tactic| ennreal_arith) => do
     | ennreal_mul_div_assoc
     | ennreal_inv_transform
     | ennreal_fraction_add
-
     | fail "ennreal_arith could not solve the goal")
 
   evalTactic tactics
 
 section Tests
 
+lemma test123: ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18 = 1 := by
+  ennreal_arith
 
 lemma test_main_tactic_addition : (↑2 : ENNReal) + ↑3 = ↑5 := by ennreal_arith
 
@@ -74,6 +75,12 @@ lemma test_zero_absorbing_properties : (0 : ENNReal) + 5 * 0 + 0 / 3 = 0 := by e
 lemma test_one_identity_chain {a : ℕ} : (↑a : ENNReal) * 1 / 1 * 1 = ↑a := by ennreal_arith
 
 lemma test_simple_arithmetic: (2 : ENNReal) + 3 = 5 := by ennreal_arith
+
+-- Test case from user's density_sum_one proof
+
+
+-- Simplified version of the issue
+lemma test_concrete_division_18 : (18 : ENNReal) / 18 = 1 := by ennreal_arith
 
 
 end Tests

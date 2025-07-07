@@ -55,6 +55,8 @@ syntax "ennreal_div_self" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_div_self) =>  do
 
+
+
   try
     evalTactic (← `(tactic| apply ENNReal.div_self))
     evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
@@ -63,6 +65,8 @@ elab_rules : tactic | `(tactic| ennreal_div_self) =>  do
     evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
     if (← getUnsolvedGoals).isEmpty then return
   catch _ => pure ()
+
+
 
   throwError "ennreal_div_self could not solve the goal"
 
