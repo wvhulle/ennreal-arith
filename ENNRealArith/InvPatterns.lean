@@ -15,8 +15,14 @@ syntax "ennreal_inv_patterns" : tactic
 elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
   let goal ← getMainGoal
   goal.withContext do
+    -- Try basic reflexivity first
+    if ← tryTactic (← `(tactic| rfl)) then return
+    
+    -- Try a comprehensive simp with common inverse/division lemmas
+    if ← tryTactic (← `(tactic| simp only [mul_one, one_mul, inv_inv, mul_comm, mul_assoc, 
+                                           div_eq_mul_inv, inv_eq_one_div, mul_div, Nat.cast_mul])) then return
+    
     let tactics : Array (TSyntax `tactic) := #[
-      ← `(tactic| rfl),
       ← `(tactic| rw [inv_inv]),
       ← `(tactic| rw [mul_one]),
       ← `(tactic| rw [one_mul]),
@@ -37,21 +43,23 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
 
 
 
-    let ofRealEarlyPattern : TacticM Bool := do
+    -- Try ofReal pattern for specific expressions
+    let tryOfRealPattern : TacticM Bool := do
       try
         let goal ← getMainGoal
         goal.withContext do
           let target ← goal.getType
-
           match target with
           | .app (.app _ (.app (.const `ENNReal.ofReal _) _)) _ =>
-            evalTactic (← `(tactic| repeat rw [inv_eq_one_div]))
-            evalTactic (← `(tactic| rw [ENNReal.ofReal_div_of_pos] <;> norm_num))
-            return (← getUnsolvedGoals).isEmpty
+            let ofRealTactics : List (TSyntax `tactic) := [
+              ← `(tactic| repeat rw [inv_eq_one_div]),
+              ← `(tactic| rw [ENNReal.ofReal_div_of_pos] <;> norm_num)
+            ]
+            tryTacticSequence ofRealTactics
           | _ => return false
       catch _ => return false
 
-    if ← ofRealEarlyPattern then return
+    if ← tryOfRealPattern then return
 
     for tac in tactics do
       if ← tryTactic tac then return
@@ -172,6 +180,10 @@ lemma test_ofReal_fraction_equality : ENNReal.ofReal (1 / 9) = 2 / 18 := by
   ennreal_inv_patterns
 
 lemma test_multiplication_inverse_equals_inverse : (6 : ENNReal) * 18⁻¹ = 3⁻¹ := by
+  ennreal_inv_patterns
+
+-- Additional test for simple nested inverse pattern
+lemma test_double_inverse_with_multiplication : ((2 : ENNReal)⁻¹)⁻¹ = 2 := by
   ennreal_inv_patterns
 
 
