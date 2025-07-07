@@ -32,6 +32,7 @@ elab_rules : tactic | `(tactic| ennreal_arith) => do
     | ennreal_mul_div_assoc
     | ennreal_inv_transform
     | ennreal_fraction_add
+
     | fail "ennreal_arith could not solve the goal")
 
   evalTactic tactics
@@ -63,7 +64,8 @@ lemma test_multiplication_cancellation_right {a b c : ℕ} (hc : c ≠ 0) :
 lemma test_mul_div_associativity {a b c : ℕ} :
   (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by ennreal_arith
 
-
+example: (@OfNat.ofNat ℝ≥0∞ 18 instOfNatAtLeastTwo)⁻¹ + 9⁻¹ = ( 6⁻¹ : ENNReal) := by
+  ennreal_fraction_add
 
 
 lemma test_mixed_arithmetic_operations : (↑2 : ENNReal) * 1 + ↑3 * 0 + ↑5 = ↑7 := by ennreal_arith

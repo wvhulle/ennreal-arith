@@ -137,22 +137,18 @@ syntax "ennreal_fraction_add" : tactic
 
 /-- Simplify expressions of ENNReals that contain additions and fractions. -/
 elab_rules : tactic | `(tactic| ennreal_fraction_add) => do
-  -- First try basic simplifications
-  if ← tryTactic (← `(tactic| simp only [add_assoc, add_zero, zero_add, inv_eq_one_div])) then return
-
-  -- Try to combine fractions with same denominator
-  repeatWhileProgress (← `(tactic| rw [← ENNReal.add_div]))
-
-  -- Try inverse and basic multiplication patterns
-  if ← tryTactic (← `(tactic| simp only [inv_eq_one_div, mul_one, one_mul, inv_inv, mul_comm, mul_assoc, div_eq_mul_inv])) then return
-
-  -- Try division simplification
-  if ← tryTactic (← `(tactic| simp only [ENNReal.div_eq_div_iff] <;> norm_num)) then return
+  -- First try basic simplification with zero addition
+  if ← tryTactic (← `(tactic| simp only [add_zero, zero_add])) then return
 
   -- Try norm_num for simple arithmetic
   if ← tryTactic (← `(tactic| norm_num)) then return
 
-  -- Try converting to real numbers when finite
+  let _ ← tryTactic (← `(tactic| simp only [add_assoc, add_zero, zero_add, inv_eq_one_div]))
+
+  repeatWhileProgress (← `(tactic| rw [← ENNReal.add_div]))
+
+  let _ ← tryTactic (← `(tactic| ennreal_inv_transform))
+
   if !(← getUnsolvedGoals).isEmpty then
     let _ ← tryTacticSequence [
       ← `(tactic| rw [ENNRealArith.ennreal_eq_via_toReal (by norm_num) (by norm_num)]),
@@ -226,7 +222,8 @@ lemma test_basic_arithmetic : (2 : ENNReal) + 3 = 5 := by
 lemma test_zero_addition : (1 : ENNReal) / 6 + 0 = 1 / 6 := by
   ennreal_fraction_add
 
-
+example: (@OfNat.ofNat ℝ≥0∞ 18 instOfNatAtLeastTwo)⁻¹ + 9⁻¹ = ( 6⁻¹ : ENNReal) := by
+  ennreal_fraction_add
 
 end FractionAddTests
 
