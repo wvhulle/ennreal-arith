@@ -10,13 +10,13 @@ open ENNReal
 
 namespace ENNRealArith
 
-/-! 
+/-!
 # Common Utilities for ENNReal Arithmetic Tactics
 
 This file contains common imports and helper functions used across all ENNReal arithmetic tactics.
 -/
 
-/-- 
+/--
 Helper function to try various ways of proving a natural number is nonzero.
 Used by multiple tactics that need to establish nonzero conditions.
 -/
@@ -77,5 +77,14 @@ def tryBasicComputation : TacticM Bool := do
   for tac in basicTactics do
     if ← tryTactic tac then return true
   return false
+
+
+/-- Repeatedly apply a tactic while it makes progress -/
+partial def repeatWhileProgress (tac : TSyntax `tactic) : TacticM Unit := do
+  let before ← getMainTarget
+  try evalTactic tac catch _ => return
+  let after ← getMainTarget
+  if before != after then repeatWhileProgress tac
+
 
 end ENNRealArith
