@@ -91,5 +91,5 @@
    "inputRev": "main",
    "inherited": true,
    "configFile": "lakefile.toml"}],
- "name": "ennreal",
+ "name": "«ennreal-arith»",
  "lakeDir": ".lake"}

@@ -165,6 +165,12 @@ elab_rules : tactic | `(tactic| ennreal_inv_patterns) => do
 
 section TestSuite
 
+lemma un_simplify_fraction : (1: ENNReal) / 9 = 2 / 18 := by
+  ennreal_inv_patterns
+
+lemma mul_simplify : ((1 :ENNReal)/6)⁻¹ * (2/18) = 2/3 := by
+  ennreal_inv_patterns
+
 
 lemma test_inverse_fraction_multiplication {a b c : ℕ} :
   (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by
