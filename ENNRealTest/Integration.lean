@@ -22,7 +22,7 @@ example {a : ℕ} : (↑a : ENNReal) * 1 / 1 * 1 = ↑a := by ennreal_arith
 example: (2 : ENNReal) + 3 = 5 := by ennreal_arith
 
 example : ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18 = 1 := by ennreal_arith
-example : (18 : ENNReal) / 18 = 1 := by set_option profiler true in ennreal_arith
+example : (18 : ENNReal) / 18 = 1 := by ennreal_arith
 example : ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18 = 1 := by ennreal_fraction_add
 example : (18 : ENNReal) / 18 = 1 := by apply ENNReal.div_self <;> norm_num
 example : ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18 = 1 := by ennreal_arith
