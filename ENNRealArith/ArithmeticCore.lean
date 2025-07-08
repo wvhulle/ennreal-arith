@@ -5,8 +5,6 @@ open ENNReal
 
 namespace ENNRealArith
 
-
-
 /--
 Tactic for basic ENNReal simplifications using norm_num, norm_cast, and simp.
 Tries various combinations of these tactics to solve simple arithmetic goals.
@@ -53,7 +51,6 @@ elab_rules : tactic | `(tactic| ennreal_basic_simp) => do
 
     throwError "ennreal_basic_simp could not solve the goal"
 
-
 /--
 Tactic for proving ENNReal division by self equals 1.
 Handles goals of the form `(↑a : ENNReal) / ↑a = 1` where `a : ℕ`,
@@ -94,7 +91,6 @@ elab_rules : tactic | `(tactic| ennreal_div_self) =>  do
         catch _ => pure ()
 
     throwError "ennreal_div_self could not solve the goal"
-
 
 /--
 Tactic for canceling common factors in ENNReal multiplication/division expressions.
@@ -138,59 +134,4 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
 
     throwError "ennreal_mul_cancel could not solve the goal"
 
-
-section BasicSimpTests
-
--- Essential identity tests
-lemma test_addition_right_identity {a : ℕ} : (↑a : ENNReal) + 0 = ↑a := by ennreal_basic_simp
-lemma test_multiplication_right_identity {a : ℕ} : (↑a : ENNReal) * 1 = ↑a := by ennreal_basic_simp
-lemma test_division_by_one {a : ℕ} : (↑a : ENNReal) / 1 = ↑a := by ennreal_basic_simp
-
--- Key absorption properties
-lemma test_multiplication_zero_absorbing {a : ℕ} : (↑a : ENNReal) * 0 = 0 := by ennreal_basic_simp
-lemma test_zero_divided_by_any {a : ℕ} : (0 : ENNReal) / ↑a = 0 := by ennreal_basic_simp
-
--- Core concrete examples
-lemma test_addition_concrete : (↑2 : ENNReal) + ↑3 = ↑5 := by ennreal_basic_simp
-lemma test_multiplication_concrete : (↑2 : ENNReal) * ↑3 = ↑6 := by ennreal_basic_simp
-
--- Cast preservation (essential for interoperability)
-lemma test_addition_preserves_nat_cast {a b : ℕ} : (↑a : ENNReal) + (↑b : ENNReal) = ↑(a + b : ℕ) := by ennreal_basic_simp
-lemma test_multiplication_preserves_nat_cast {a b : ℕ} : (↑a : ENNReal) * (↑b : ENNReal) = ↑(a * b : ℕ) := by ennreal_basic_simp
-
-end BasicSimpTests
-
-section DivSelfTests
-
-
-lemma test_division_self_nonzero {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by
-  ennreal_div_self
-
-lemma test_division_self_nonzero_manual {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by
-  apply ENNReal.div_self
-  · exact ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr (by assumption))
-  · exact ENNReal.coe_ne_top
-
-lemma test_division_self_successor {n : ℕ} : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 := by ennreal_div_self
-
-lemma test_division_self_concrete : (↑2 : ENNReal) / ↑2 = 1 := by ennreal_div_self
-
-end DivSelfTests
-
-section MulCancelTests
-
--- Core cancellation functionality
-lemma test_division_cancellation_right {a b c : ℕ} (hc : c ≠ 0) : (↑(a * c) : ENNReal) / (↑(b * c)) = (↑a) / (↑b) := by ennreal_mul_cancel
-lemma test_division_cancellation_left {a b c : ℕ} (hc : c ≠ 0) : (↑(c * a) : ENNReal) / (↑(c * b)) = (↑a) / (↑b) := by ennreal_mul_cancel
-
-lemma test_division_cancellation_concrete : (↑(3 * 2) : ENNReal) / (↑(5 * 2)) = (↑3) / (↑5) := by
-  have : (2 : ℕ) ≠ 0 := by norm_num
-  ennreal_mul_cancel
-
-lemma test_division_cancellation_zero_numerator {b c : ℕ} : (↑(0 * c) : ENNReal) / (↑(b * c)) = (↑0) / (↑b) := by ennreal_mul_cancel
-
-end MulCancelTests
-
 end ENNRealArith
-
-#lint

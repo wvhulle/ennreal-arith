@@ -5,6 +5,9 @@ version = "0.1.0"
 [[lean_lib]]
 name = "ENNRealArith"
 
+[[lean_lib]]
+name = "ENNRealTest"
+
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"

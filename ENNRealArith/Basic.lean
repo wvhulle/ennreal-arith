@@ -11,18 +11,18 @@ elab_rules : tactic | `(tactic| ennreal_arith) => do
   let goal ← getMainGoal
   goal.withContext do
     let target ← getMainTarget
-    
+
     let patterns? ← analyzeEqualityGoal target
-    
+
     match patterns? with
-    | none => 
+    | none =>
       evalTactic (← `(tactic| first
         | ennreal_basic_simp
         | ennreal_div_self
         | fail "ennreal_arith expects an equality goal"))
-    
+
     | some (lhsPattern, rhsPattern) =>
-      let tactics : TSyntax `tactic ← 
+      let tactics : TSyntax `tactic ←
         if isConcreteDivisionGoal target then
           `(tactic| first
             | ennreal_fraction_add
@@ -62,7 +62,7 @@ elab_rules : tactic | `(tactic| ennreal_arith) => do
             | ennreal_inv_transform
             | ennreal_fraction_add
             | fail "ennreal_arith could not solve the goal")
-      
+
       evalTactic tactics
 
 section Tests
@@ -89,13 +89,11 @@ lemma test_division_self_nonzero_global {a : ℕ} (ha : a ≠ 0) : (↑a : ENNRe
 lemma test_multiplication_cancellation_right {a b c : ℕ} (hc : c ≠ 0) :
   (↑(a * c) : ENNReal) / (↑(b * c)) = (↑a) / (↑b) := by ennreal_arith
 
-
 lemma test_mul_div_associativity {a b c : ℕ} :
   (↑a : ENNReal) * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑(a * b) : ENNReal) / (↑c : ENNReal) := by ennreal_arith
 
 example: (@OfNat.ofNat ℝ≥0∞ 18 instOfNatAtLeastTwo)⁻¹ + 9⁻¹ = ( 6⁻¹ : ENNReal) := by
   ennreal_fraction_add
-
 
 lemma test_mixed_arithmetic_operations : (↑2 : ENNReal) * 1 + ↑3 * 0 + ↑5 = ↑7 := by ennreal_arith
 
@@ -126,13 +124,11 @@ lemma test_user_workaround :
   ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18 = 1 := by
   first | ennreal_arith
 
-
 lemma test_split_ifs_simulation (p q : Prop) [Decidable p] [Decidable q] :
   (if p then (0 : ENNReal) else if q then 1/18 else
     ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18) =
   (if p then 0 else if q then 1/18 else 1) := by
   split_ifs <;> ennreal_arith
-
 
 end Tests
 

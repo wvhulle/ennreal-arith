@@ -44,8 +44,6 @@ def tryTactic (tac : TSyntax `tactic) : TacticM Bool := do
     return goals_after.isEmpty
   catch _ => return false
 
-
-
 def tryBasicComputation : TacticM Bool := do
   let basicTactics := [
     ← `(tactic| norm_num),
@@ -56,47 +54,11 @@ def tryBasicComputation : TacticM Bool := do
     if ← tryTactic tac then return true
   return false
 
-
-
 partial def repeatWhileProgress (tac : TSyntax `tactic) : TacticM Unit := do
   let before ← getMainTarget
   try evalTactic tac catch _ => return
   let after ← getMainTarget
   if before != after then repeatWhileProgress tac
-
-
-
-section IdentityTests
-
-def test_zero_additive_identity (a : ℕ) : Prop := (↑a : ENNReal) + 0 = ↑a
-
-def test_one_multiplicative_identity (a : ℕ) : Prop := (↑a : ENNReal) * 1 = ↑a
-
-def test_division_by_one_identity (a : ℕ) : Prop := (↑a : ENNReal) / 1 = ↑a
-
-end IdentityTests
-
-section ConcreteArithmetic
-
-def test_numbers : List ℕ := [2, 3, 5, 6, 7, 18]
-
-def test_addition_preserves_cast (a b : ℕ) : Prop :=
-  (↑a : ENNReal) + (↑b : ENNReal) = ↑(a + b : ℕ)
-
-def test_multiplication_preserves_cast (a b : ℕ) : Prop :=
-  (↑a : ENNReal) * (↑b : ENNReal) = ↑(a * b : ℕ)
-
-end ConcreteArithmetic
-
-section DivisionTests
-
-def test_division_by_self (a : ℕ) (_ : a ≠ 0) : Prop :=
-  (↑a : ENNReal) / ↑a = 1
-
-def test_zero_division (a : ℕ) : Prop :=
-  (0 : ENNReal) / ↑a = 0
-
-end DivisionTests
 
 structure GoalPattern where
   hasAddition : Bool

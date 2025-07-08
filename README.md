@@ -10,11 +10,12 @@ Add this project as a dependency to your `lakefile.toml`:
 [[require]]
 scope = "wvhulle"
 name = "ennreal-arith"
+rev = "main" # or a specific commit
 ```
 
 ## Usage
 
-Import the library in your Lean files:
+Import in your Lean files:
 
 ```lean
 import ENNRealArith
