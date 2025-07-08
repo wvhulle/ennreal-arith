@@ -12,3 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: leanprover/lean-action@v1
+        with:
+          test: true
+          build: true
+          check-reservoir-eligibility: true
