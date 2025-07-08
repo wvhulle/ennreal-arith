@@ -1,4 +1,4 @@
-defaultTargets = ["ENNRealArith", "ENNRealTest"]
+defaultTargets = ["ENNRealArith", "ENNRealTest", "TestRunner"]
 name = "ennreal-arith"
 testDriver = "TestRunner"
 version = "0.1.0"
