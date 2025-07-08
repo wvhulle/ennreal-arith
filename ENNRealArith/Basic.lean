@@ -107,7 +107,7 @@ lemma test_nested_addition_division_works :
  ennreal_arith
 
 lemma test_concrete_division_18_works : (18 : ENNReal) / 18 = 1 := by
-  set_option profiler true in ennreal_arith
+  ennreal_arith
 
 lemma test_nested_addition_division_fraction_add_succeeds :
   ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18 = 1 := by
