@@ -27,15 +27,23 @@ Tries various combinations of these tactics to solve simple arithmetic goals.
 syntax "ennreal_basic_simp" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_basic_simp) => do
+  -- First try basic computation which often works
   if ← tryBasicComputation then return
 
-  if ← tryTactic (← `(tactic| simp)) then return
+  -- Try simp with ENNReal lemmas
+  if ← tryTactic (← `(tactic| simp [ENNReal.add_eq_top, ENNReal.mul_eq_top])) then return
 
   let tacticSequences := [
+    -- Standard normalization
     [← `(tactic| norm_cast), ← `(tactic| norm_num)],
-    [← `(tactic| simp only [add_zero, zero_add, inv_eq_one_div])],
-    [← `(tactic| simp only [add_zero, zero_add]), ← `(tactic| norm_num)],
-    [← `(tactic| rw [ENNReal.div_eq_div_iff]), ← `(tactic| all_goals norm_num)]
+    -- Simplify identities
+    [← `(tactic| simp only [add_zero, zero_add, mul_zero, zero_mul, mul_one, one_mul, inv_eq_one_div])],
+    -- Combination approach
+    [← `(tactic| simp only [add_zero, zero_add, mul_zero, zero_mul]), ← `(tactic| norm_num)],
+    -- Division equivalence
+    [← `(tactic| rw [ENNReal.div_eq_div_iff]), ← `(tactic| all_goals norm_num)],
+    -- Try norm_num alone for concrete computations
+    [← `(tactic| norm_num)]
   ]
 
   for sequence in tacticSequences do
@@ -49,26 +57,49 @@ elab_rules : tactic | `(tactic| ennreal_basic_simp) => do
 
 /--
 Tactic for proving ENNReal division by self equals 1.
-Handles goals of the form `(↑a : ENNReal) / ↑a = 1` where `a : ℕ`.
+Handles goals of the form `(↑a : ENNReal) / ↑a = 1` where `a : ℕ`,
+as well as concrete cases like `18 / 18 = 1`.
 -/
 syntax "ennreal_div_self" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_div_self) =>  do
-
-
-
-  try
-    evalTactic (← `(tactic| apply ENNReal.div_self))
-    evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-    evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-    tryNonzeroProof
-    evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-    if (← getUnsolvedGoals).isEmpty then return
-  catch _ => pure ()
-
-
-
-  throwError "ennreal_div_self could not solve the goal"
+  let goal ← getMainGoal
+  goal.withContext do
+    let target ← getMainTarget
+    
+    -- Check if it's an equality goal
+    if !target.isAppOfArity ``Eq 3 then
+      throwError "ennreal_div_self expects an equality goal"
+    
+    let lhs := target.getArg! 1
+    let _rhs := target.getArg! 2
+    
+    -- First try the standard approach for cast patterns
+    try
+      evalTactic (← `(tactic| apply ENNReal.div_self))
+      evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
+      evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
+      tryNonzeroProof
+      evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
+      if (← getUnsolvedGoals).isEmpty then return
+    catch _ => pure ()
+    
+    -- For concrete division like 18/18 = 1
+    if lhs.isAppOfArity ``HDiv.hDiv 6 then
+      let num := lhs.getArg! 4
+      let den := lhs.getArg! 5
+      
+      -- Check if numerator and denominator are equal
+      if num == den then
+        try
+          -- Try to prove it's nonzero and not top
+          evalTactic (← `(tactic| apply ENNReal.div_self))
+          evalTactic (← `(tactic| norm_num))
+          evalTactic (← `(tactic| norm_num))
+          if (← getUnsolvedGoals).isEmpty then return
+        catch _ => pure ()
+    
+    throwError "ennreal_div_self could not solve the goal"
 
 -- =============================================
 -- MULTIPLICATION CANCELLATION TACTIC

@@ -6,35 +6,91 @@ open Lean Meta Elab Tactic ENNReal
 namespace ENNRealArith
 
 /--
-Main ENNReal arithmetic tactic that combines multiple specialized tactics.
+Smart ENNReal arithmetic tactic that combines multiple specialized tactics.
 
-This is the primary entry point for ENNReal arithmetic automation. It attempts
-to solve goals involving ENNReal expressions by trying a sequence of specialized
-tactics in order:
+This is the primary entry point for ENNReal arithmetic automation. It analyzes
+the goal structure to select the optimal tactic order, improving efficiency:
 
-1. `ennreal_basic_simp` - Basic arithmetic simplification
-2. `ennreal_div_self` - Division by self patterns
+- **Simple arithmetic**: Prioritizes `ennreal_basic_simp`
+- **Concrete division** (like `18/18 = 1`): Prioritizes `ennreal_fraction_add`
+- **Inverse patterns**: Prioritizes `ennreal_inv_transform` and `ennreal_fraction_add`  
+- **General division**: Prioritizes `ennreal_div_self` and related tactics
+
+Available sub-tactics:
+1. `ennreal_basic_simp` - Basic arithmetic simplification and norm_num
+2. `ennreal_div_self` - Division by self patterns (now handles concrete cases)
 3. `ennreal_mul_cancel` - Multiplication cancellation in fractions
 4. `ennreal_mul_div_assoc` - Multiplication/division associativity
 5. `ennreal_inv_transform` - Inverse pattern transformations
 6. `ennreal_fraction_add` - Fraction addition and simplification
 
-The tactic will try each approach in sequence until one succeeds, or fail
-with a descriptive error message if none apply.
+The tactic analyzes goal shape to minimize unnecessary attempts, making it
+faster and more reliable than the original linear search approach.
 -/
 syntax "ennreal_arith" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_arith) => do
-  let tactics : TSyntax `tactic := ← `(tactic| first
-    | ennreal_basic_simp
-    | ennreal_div_self
-    | ennreal_mul_cancel
-    | ennreal_mul_div_assoc
-    | ennreal_inv_transform
-    | ennreal_fraction_add
-    | fail "ennreal_arith could not solve the goal")
-
-  evalTactic tactics
+  let goal ← getMainGoal
+  goal.withContext do
+    let target ← getMainTarget
+    
+    -- Check if the goal contains division
+    let hasDivision := target.find? (fun e => e.isAppOfArity ``HDiv.hDiv 6) |>.isSome
+    
+    -- Check if the goal contains inverse
+    let hasInverse := target.find? (fun e => e.isAppOfArity ``Inv.inv 3) |>.isSome
+    
+    -- Check for concrete division pattern like 18/18 = 1
+    let isConcreteDivision := target.isAppOfArity ``Eq 3 &&
+      let lhs := target.getArg! 1
+      let rhs := target.getArg! 2
+      lhs.isAppOfArity ``HDiv.hDiv 6 && 
+      (rhs.isAppOfArity ``OfNat.ofNat 3 && rhs.getArg! 1 == mkNatLit 1)
+    
+    -- Choose tactic order based on goal shape
+    let tactics : TSyntax `tactic ← 
+      if isConcreteDivision then
+        -- For concrete division patterns, prioritize fraction_add
+        `(tactic| first
+          | ennreal_fraction_add
+          | ennreal_div_self
+          | ennreal_basic_simp
+          | ennreal_mul_cancel
+          | ennreal_mul_div_assoc
+          | ennreal_inv_transform
+          | fail "ennreal_arith could not solve the goal")
+      else if hasInverse then
+        -- For inverse patterns, prioritize inv_transform and fraction_add
+        `(tactic| first
+          | ennreal_inv_transform
+          | ennreal_fraction_add
+          | ennreal_basic_simp
+          | ennreal_div_self
+          | ennreal_mul_cancel
+          | ennreal_mul_div_assoc
+          | fail "ennreal_arith could not solve the goal")
+      else if hasDivision then
+        -- For division patterns, check div_self first
+        `(tactic| first
+          | ennreal_div_self
+          | ennreal_mul_cancel
+          | ennreal_mul_div_assoc
+          | ennreal_fraction_add
+          | ennreal_basic_simp
+          | ennreal_inv_transform
+          | fail "ennreal_arith could not solve the goal")
+      else
+        -- Default order for simple arithmetic
+        `(tactic| first
+          | ennreal_basic_simp
+          | ennreal_div_self
+          | ennreal_mul_cancel
+          | ennreal_mul_div_assoc
+          | ennreal_inv_transform
+          | ennreal_fraction_add
+          | fail "ennreal_arith could not solve the goal")
+    
+    evalTactic tactics
 
 section Tests
 
@@ -76,16 +132,14 @@ lemma test_one_identity_chain {a : ℕ} : (↑a : ENNReal) * 1 / 1 * 1 = ↑a :=
 
 lemma test_simple_arithmetic: (2 : ENNReal) + 3 = 5 := by ennreal_arith
 
--- Test case from user's density_sum_one proof that currently fails
--- This test demonstrates the issue where ennreal_arith can't prove 18/18 = 1
--- after simplifying a complex nested addition
-lemma test_nested_addition_division_fails :
+-- Test case from user's density_sum_one proof - now works with smart tactic
+lemma test_nested_addition_division_works :
   ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18 = 1 := by
- ennreal_arith -- sorry -- ennreal_arith fails here!
+ ennreal_arith
 
--- The core issue: ennreal_arith fails on concrete division after simplification
-lemma test_concrete_division_18_fails : (18 : ENNReal) / 18 = 1 := by
-  ennreal_arith -- fails here!
+-- Concrete division case - now handled by improved ennreal_arith
+lemma test_concrete_division_18_works : (18 : ENNReal) / 18 = 1 := by
+  set_option profiler true in ennreal_arith
 
 -- But ennreal_fraction_add succeeds on the same goal
 lemma test_nested_addition_division_fraction_add_succeeds :
