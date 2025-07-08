@@ -1,5 +1,6 @@
 defaultTargets = ["ENNRealArith"]
 name = "ennreal-arith"
+testDriver = "TestRunner"
 version = "0.1.0"
 
 [[lean_lib]]
@@ -7,6 +8,9 @@ name = "ENNRealArith"
 
 [[lean_lib]]
 name = "ENNRealTest"
+
+[[lean_exe]]
+name = "TestRunner"
 
 [[require]]
 name = "mathlib"

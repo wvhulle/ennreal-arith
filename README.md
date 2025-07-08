@@ -32,3 +32,10 @@ example (a b c : ℕ) (hc : c ≠ 0) :
   (↑(a * c) : ENNReal) / (↑(b * c)) = ↑a / ↑b := by ennreal_arith
 ```
 
+## Testing
+
+To run unit and integration tests, use the following command:
+
+```bash
+lake test
+```
