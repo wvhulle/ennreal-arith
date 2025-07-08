@@ -27,29 +27,54 @@ Tries various combinations of these tactics to solve simple arithmetic goals.
 syntax "ennreal_basic_simp" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_basic_simp) => do
-  -- First try basic computation which often works
-  if ← tryBasicComputation then return
+  let goal ← getMainGoal
+  goal.withContext do
+    let target ← getMainTarget
+    
+    -- First try basic computation which often works
+    if ← tryBasicComputation then return
+    
+    -- Analyze goal patterns to choose optimal approach
+    let patterns? ← analyzeEqualityGoal target
+    
+    match patterns? with
+    | some (lhs, rhs) =>
+      -- Use pattern-specific strategies with readable pattern matching
+      let simpleArith := lhs.isSimpleArithmetic && rhs.isSimpleArithmetic
+      let hasDivision := lhs.hasDivision || rhs.hasDivision  
+      let hasInverse := lhs.hasInverse || rhs.hasInverse
+      
+      if simpleArith then
+        -- For simple arithmetic, prioritize norm_num and basic identities
+        if ← tryTactic (← `(tactic| norm_num)) then return
+        if ← tryTactic (← `(tactic| simp only [add_zero, zero_add, mul_zero, zero_mul, mul_one, one_mul])) then return
+        if ← tryTacticSequence [← `(tactic| norm_cast), ← `(tactic| norm_num)] then return
+      else if hasDivision then
+        -- For division patterns, try division-specific simplifications first
+        if ← tryTactic (← `(tactic| simp only [ENNReal.zero_div, div_one])) then return
+        if ← tryTacticSequence [← `(tactic| rw [ENNReal.div_eq_div_iff]), ← `(tactic| all_goals norm_num)] then return
+      else if hasInverse then
+        -- For inverse patterns, handle inverse transformations
+        if ← tryTactic (← `(tactic| simp only [inv_eq_one_div, inv_inv])) then return
+      
+      -- Try standard approach if pattern-specific didn't work
+      if ← tryTactic (← `(tactic| simp [ENNReal.add_eq_top, ENNReal.mul_eq_top])) then return
+    | none =>
+      -- Not an equality goal, try basic approach
+      if ← tryTactic (← `(tactic| simp)) then return
+    
+    -- Fallback sequences if pattern-specific approaches didn't work
+    let tacticSequences := [
+      [← `(tactic| norm_cast), ← `(tactic| norm_num)],
+      [← `(tactic| simp only [add_zero, zero_add, mul_zero, zero_mul, mul_one, one_mul])],
+      [← `(tactic| simp only [add_zero, zero_add, mul_zero, zero_mul]), ← `(tactic| norm_num)],
+      [← `(tactic| norm_num)]
+    ]
 
-  -- Try simp with ENNReal lemmas
-  if ← tryTactic (← `(tactic| simp [ENNReal.add_eq_top, ENNReal.mul_eq_top])) then return
+    for sequence in tacticSequences do
+      if ← tryTacticSequence sequence then return
 
-  let tacticSequences := [
-    -- Standard normalization
-    [← `(tactic| norm_cast), ← `(tactic| norm_num)],
-    -- Simplify identities
-    [← `(tactic| simp only [add_zero, zero_add, mul_zero, zero_mul, mul_one, one_mul, inv_eq_one_div])],
-    -- Combination approach
-    [← `(tactic| simp only [add_zero, zero_add, mul_zero, zero_mul]), ← `(tactic| norm_num)],
-    -- Division equivalence
-    [← `(tactic| rw [ENNReal.div_eq_div_iff]), ← `(tactic| all_goals norm_num)],
-    -- Try norm_num alone for concrete computations
-    [← `(tactic| norm_num)]
-  ]
-
-  for sequence in tacticSequences do
-    if ← tryTacticSequence sequence then return
-
-  throwError "ennreal_basic_simp could not solve the goal"
+    throwError "ennreal_basic_simp could not solve the goal"
 
 -- =============================================
 -- DIVISION BY SELF TACTIC

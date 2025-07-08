@@ -41,45 +41,38 @@ elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
   let goal ← getMainGoal
   goal.withContext do
     let target ← getMainTarget
-    
-    -- Check if it's an equality goal
-    if !target.isAppOfArity ``Eq 3 then
-      throwError "ennreal_mul_div_assoc expects an equality goal"
-    
-    let lhs := target.getArg! 1
-    let rhs := target.getArg! 2
-    
-    -- Check for multiplication-division patterns 
-    let hasMultInDiv := (lhs.find? (fun e => 
-      e.isAppOfArity ``HMul.hMul 6 && 
-      ((e.getArg! 4).isAppOfArity ``HDiv.hDiv 6 ||
-       (e.getArg! 5).isAppOfArity ``HDiv.hDiv 6)
-    )).isSome || (rhs.find? (fun e => 
-      e.isAppOfArity ``HMul.hMul 6 && 
-      ((e.getArg! 4).isAppOfArity ``HDiv.hDiv 6 ||
-       (e.getArg! 5).isAppOfArity ``HDiv.hDiv 6)
-    )).isSome
-    
-    -- Try different approaches based on goal structure
-    if hasMultInDiv then
-      -- For multiplication-division patterns, use mul_div laws
-      if ← tryTactic (← `(tactic| simp only [mul_div, ENNReal.mul_comm_div, one_mul, mul_one, Nat.cast_mul])) then return
-    else
-      -- For other patterns, try basic arithmetic first
-      if ← tryTactic (← `(tactic| norm_num)) then return
-      if ← tryTactic (← `(tactic| simp only [mul_one, one_mul, Nat.cast_mul])) then return
-    
-    -- Try the original approach as fallback
-    if ← tryTactic (← `(tactic| simp only [mul_div, ENNReal.mul_comm_div, one_mul, mul_one, Nat.cast_mul])) then return
 
-    -- Handle division by self cases
-    try
-      evalTactic (← `(tactic| apply ENNReal.div_self))
-      evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-      evalTactic (← `(tactic| assumption))
-      evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-      if (← getUnsolvedGoals).isEmpty then return
-    catch _ => pure ()
+    -- Analyze goal patterns using our helper functions
+    let patterns? ← analyzeEqualityGoal target
+
+    match patterns? with
+    | some (lhs, rhs) =>
+      -- Use pattern-specific strategies with readable pattern matching
+      let hasMultInDiv := lhs.hasMultiplicationInDivision || rhs.hasMultiplicationInDivision
+      let hasSimpleArith := lhs.isSimpleArithmetic || rhs.isSimpleArithmetic
+
+      if hasMultInDiv then
+        -- For multiplication-division patterns, use mul_div laws
+        if ← tryTactic (← `(tactic| simp only [mul_div, ENNReal.mul_comm_div, one_mul, mul_one, Nat.cast_mul])) then return
+      else if hasSimpleArith then
+        -- For simple patterns, try basic arithmetic first
+        if ← tryTactic (← `(tactic| norm_num)) then return
+        if ← tryTactic (← `(tactic| simp only [mul_one, one_mul, Nat.cast_mul])) then return
+
+      -- Try the comprehensive approach
+      if ← tryTactic (← `(tactic| simp only [mul_div, ENNReal.mul_comm_div, one_mul, mul_one, Nat.cast_mul])) then return
+
+      -- Handle division by self cases with better error handling
+      if ← tryTacticSequence [
+        ← `(tactic| apply ENNReal.div_self),
+        ← `(tactic| apply Nat.cast_ne_zero.mpr),
+        ← `(tactic| assumption),
+        ← `(tactic| exact ENNReal.coe_ne_top)
+      ] then return
+
+    | none =>
+      -- Not an equality goal
+      throwError "ennreal_mul_div_assoc expects an equality goal"
 
     throwError "ennreal_mul_div_assoc could not solve the goal"
 
@@ -91,78 +84,70 @@ syntax "ennreal_inv_transform" : tactic
 
 /--
 Smart tactic for transforming ENNReal inverse and division expressions.
-Analyzes goal structure to efficiently handle transformations involving inverses, 
+Analyzes goal structure to efficiently handle transformations involving inverses,
 divisions, and multiplications. Converts between forms like `a⁻¹ * b = b / a` and `(a⁻¹)⁻¹ = a`.
 -/
 elab_rules : tactic | `(tactic| ennreal_inv_transform) => do
   let goal ← getMainGoal
   goal.withContext do
     let target ← getMainTarget
-    
+
     -- Try basic reflexivity first
     if ← tryTactic (← `(tactic| rfl)) then return
-    
-    -- Analyze goal structure
-    let hasInverse := target.find? (fun e => e.isAppOfArity ``Inv.inv 3) |>.isSome
-    let hasDoubleInv := target.find? (fun e => 
-      e.isAppOfArity ``Inv.inv 3 && 
-      (e.getArg! 2).isAppOfArity ``Inv.inv 3
-    ) |>.isSome
-    let hasInvMul := target.find? (fun e => 
-      e.isAppOfArity ``HMul.hMul 6 && 
-      ((e.getArg! 4).isAppOfArity ``Inv.inv 3 || 
-       (e.getArg! 5).isAppOfArity ``Inv.inv 3)
-    ) |>.isSome
-    let hasDivision := target.find? (fun e => e.isAppOfArity ``HDiv.hDiv 6) |>.isSome
-    
-    -- Choose strategy based on goal pattern
-    if hasDoubleInv then
-      -- Handle double inverse patterns first, including (1/a)⁻¹ = a
-      if ← tryTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, one_div, ENNReal.inv_inv])) then return
-    
-    if hasInvMul && hasDivision then
-      -- Handle inverse-multiplication to division conversion
-      if ← tryTactic (← `(tactic| simp only [div_eq_mul_inv, mul_comm])) then return
-    
-    if hasInverse && !hasDivision then
-      -- Pure inverse transformations
-      if ← tryTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, mul_one, one_mul])) then return
-    
-    -- Try comprehensive simp with common inverse/division lemmas
-    if ← tryTactic (← `(tactic| simp only [mul_one, one_mul, inv_inv, mul_comm, mul_assoc,
-                                           div_eq_mul_inv, inv_eq_one_div, mul_div, Nat.cast_mul])) then return
 
-    -- Try more specific patterns
-    let tactics : Array (TSyntax `tactic) := #[
+    -- Analyze goal patterns using our helper functions
+    let patterns? ← analyzeEqualityGoal target
+
+    match patterns? with
+    | some (lhs, rhs) =>
+      -- Use pattern-specific strategies with readable pattern matching
+      let hasDoubleInv := lhs.hasDoubleInverse || rhs.hasDoubleInverse
+      let hasInverse := lhs.hasInverse || rhs.hasInverse
+      let hasDivision := lhs.hasDivision || rhs.hasDivision
+      let hasInvMulDiv := lhs.hasMultiplicationInDivision || rhs.hasMultiplicationInDivision
+
+      if hasDoubleInv then
+        -- Handle double inverse patterns first, including (1/a)⁻¹ = a
+        if ← tryTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, one_div])) then return
+
+      if hasInverse && hasDivision then
+        -- Handle inverse-multiplication to division conversion
+        if ← tryTactic (← `(tactic| simp only [div_eq_mul_inv, mul_comm])) then return
+
+      if hasInverse && !hasDivision then
+        -- Pure inverse transformations
+        if ← tryTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, mul_one, one_mul])) then return
+
+      if hasInvMulDiv then
+        -- Complex patterns that might need mul_div_assoc
+        if ← tryTacticSequence [
+          ← `(tactic| simp only [one_div, inv_inv]),
+          ← `(tactic| ennreal_mul_div_assoc)
+        ] then return
+
+      -- Try comprehensive simp if specific patterns didn't work
+      if ← tryTactic (← `(tactic| simp only [mul_one, one_mul, inv_inv, mul_comm, mul_assoc,
+                                             div_eq_mul_inv, inv_eq_one_div, mul_div, Nat.cast_mul])) then return
+
+    | none =>
+      -- Not an equality goal, try basic approach
+      if ← tryTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div])) then return
+
+    -- Fallback tactics for remaining cases
+    let remainingTactics := [
       ← `(tactic| rw [inv_inv]),
       ← `(tactic| rw [div_eq_mul_inv, one_mul, inv_inv]),
       ← `(tactic| rw [inv_eq_one_div]),
-      ← `(tactic| simp only [mul_div, Nat.cast_mul]),
+      ← `(tactic| simp only [mul_div, Nat.cast_mul])
     ]
 
-    for tac in tactics do
+    for tac in remainingTactics do
       if ← tryTactic tac then return
 
-    -- Try multiplication-inverse equality pattern
-    if ← tryTacticSequence [
-      ← `(tactic| rw [← div_eq_mul_inv, inv_eq_one_div]),
-      ← `(tactic| rw [ENNReal.div_eq_div_iff]),
-      ← `(tactic| all_goals norm_num)
-    ] then return
-
-    -- Try division equality pattern
+    -- Try division equality patterns
     if ← tryTacticSequence [
       ← `(tactic| rw [ENNReal.div_eq_div_iff]),
       ← `(tactic| all_goals norm_num)
-    ] then return
-
-    -- Try basic division by self pattern
-    if ← tryTactic (← `(tactic| simp only [ENNReal.div_self] <;> norm_num)) then return
-
-    -- For complex patterns involving division inverse, try simplification then mul_div_assoc
-    if ← tryTacticSequence [
-      ← `(tactic| simp only [one_div, inv_inv]),
-      ← `(tactic| ennreal_mul_div_assoc)
     ] then return
 
     -- Final fallback
@@ -183,42 +168,83 @@ lemma ennreal_eq_via_toReal {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
 
 syntax "ennreal_fraction_add" : tactic
 
-/-- Simplify expressions of ENNReals that contain additions and fractions. -/
+/--
+Smart tactic for simplifying ENNReal expressions with additions and fractions.
+Uses pattern analysis to efficiently handle different types of fraction operations.
+-/
 elab_rules : tactic | `(tactic| ennreal_fraction_add) => do
-  -- First try basic simplification with zero addition
-  -- if ← tryTactic (← `(tactic| simp only [add_zero, zero_add])) then return
+  let goal ← getMainGoal
+  goal.withContext do
+    let target ← getMainTarget
+    
+    -- Try norm_num first for simple arithmetic
+    if ← tryTactic (← `(tactic| norm_num)) then return
 
-  -- Try norm_num for simple arithmetic
-  if ← tryTactic (← `(tactic| norm_num)) then return
+    -- Analyze goal patterns using our helper functions
+    let patterns? ← analyzeEqualityGoal target
+    
+    -- Check for concrete division patterns first for early exit
+    if isConcreteDivisionGoal target then
+      if ← tryTactic (← `(tactic| ennreal_div_self)) then return
+    
+    -- Use pattern analysis to optimize approach
+    match patterns? with
+    | some (lhs, rhs) =>
+      let hasInverse := lhs.hasInverse || rhs.hasInverse
+      let hasAddition := lhs.hasAddition || rhs.hasAddition
+      let isSimpleArithmetic := lhs.isSimpleArithmetic && rhs.isSimpleArithmetic
+      
+      if isSimpleArithmetic then
+        -- For simple arithmetic, try basic identities first
+        if ← tryTactic (← `(tactic| simp only [add_zero, zero_add, mul_one, one_mul])) then return
+      
+      if hasInverse then
+        -- For inverse patterns, convert to divisions first
+        let _ ← tryTactic (← `(tactic| simp only [add_assoc, add_zero, zero_add, inv_eq_one_div]))
+        let _ ← tryTactic (← `(tactic| ennreal_inv_transform))
+        -- For complex inverse addition, try norm_num1 to simplify OfNat patterns
+        if hasAddition then
+          let _ ← tryTactic (← `(tactic| norm_num1))
+      else if hasAddition then
+        -- For addition patterns, focus on combining terms
+        let _ ← tryTactic (← `(tactic| simp only [add_assoc, add_zero, zero_add]))
+      
+    | none =>
+      -- Not an equality goal, use basic approach
+      let _ ← tryTactic (← `(tactic| simp only [add_zero, zero_add]))
+    
+    -- Common steps for all patterns
+    -- Convert inverses to divisions and simplify nested additions  
+    let _ ← tryTactic (← `(tactic| simp only [add_assoc, add_zero, zero_add, inv_eq_one_div]))
 
-  -- Convert inverses to divisions and simplify nested additions
-  let _ ← tryTactic (← `(tactic| simp only [add_assoc, add_zero, zero_add, inv_eq_one_div]))
+    -- Repeatedly combine additions with division
+    repeatWhileProgress (← `(tactic| rw [← ENNReal.add_div]))
 
-  -- Repeatedly combine additions with division
-  repeatWhileProgress (← `(tactic| rw [← ENNReal.add_div]))
+    -- Try inverse transformations
+    let _ ← tryTactic (← `(tactic| ennreal_inv_transform))
 
-  -- Try inverse transformations
-  let _ ← tryTactic (← `(tactic| ennreal_inv_transform))
+    -- Try division by self for cases like 18/18 = 1
+    if ← tryTactic (← `(tactic| ennreal_div_self)) then return
 
+    -- Check if goal is solved after pattern-specific attempts
+    if (← getUnsolvedGoals).isEmpty then return
 
-  -- Try division by self for cases like 18/18 = 1
-  if ← tryTactic (← `(tactic| ennreal_div_self)) then return
-
-  -- If still not solved, try the toReal approach
-  if !(← getUnsolvedGoals).isEmpty then
-    let _ ← tryTacticSequence [
+    -- If still not solved, try the toReal approach
+    if ← tryTacticSequence [
       ← `(tactic| rw [ENNRealArith.ennreal_eq_via_toReal (by norm_num) (by norm_num)]),
       ← `(tactic| rw [ENNReal.toReal_add, ENNReal.toReal_div, ENNReal.toReal_div, ENNReal.toReal_div]),
-      ← `(tactic| all_goals norm_num),
-    ]
+      ← `(tactic| all_goals norm_num)
+    ] then return
 
-  -- Final attempt with more aggressive rewriting
-  if !(← getUnsolvedGoals).isEmpty then
-    let _ ← tryTacticSequence [
+    -- Final attempt with more aggressive rewriting
+    if ← tryTacticSequence [
       ← `(tactic| simp only [inv_eq_one_div]),
       ← `(tactic| rw [← ENNReal.add_div]),
-      ← `(tactic| norm_num),
-    ]
+      ← `(tactic| norm_num)
+    ] then return
+    
+    -- If all attempts failed, provide informative error
+    throwError "ennreal_fraction_add could not solve the goal"
 
 
 -- =============================================
@@ -259,16 +285,16 @@ lemma test_division_as_inverse_multiplication {a b : ℕ} :
   (↑a : ENNReal) / (↑b : ENNReal) = (↑a : ENNReal) * (↑b : ENNReal)⁻¹ := by ennreal_inv_transform
 
 -- Double inverse property
-lemma test_double_inverse_identity {a : ℕ} : ((↑a : ENNReal)⁻¹)⁻¹ = (↑a : ENNReal) := by 
+lemma test_double_inverse_identity {a : ℕ} : ((↑a : ENNReal)⁻¹)⁻¹ = (↑a : ENNReal) := by
   simp only [inv_inv]
 
 -- Reciprocal patterns
-lemma test_reciprocal_as_inverse {a : ℕ} : (1 : ENNReal) / (↑a : ENNReal) = (↑a : ENNReal)⁻¹ := by 
+lemma test_reciprocal_as_inverse {a : ℕ} : (1 : ENNReal) / (↑a : ENNReal) = (↑a : ENNReal)⁻¹ := by
   simp only [inv_eq_one_div]
 
 -- Complex pattern example
 lemma test_inverse_fraction_multiplication {a b c : ℕ} :
-  (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑a * ↑b : ENNReal) / (↑c : ENNReal) := by 
+  (1 / (↑a : ENNReal))⁻¹ * ((↑b : ENNReal) / (↑c : ENNReal)) = (↑a * ↑b : ENNReal) / (↑c : ENNReal) := by
   simp only [one_div, inv_inv, mul_div]
 
 end InvPatternTests

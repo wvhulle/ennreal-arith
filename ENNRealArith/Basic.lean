@@ -34,63 +34,67 @@ elab_rules : tactic | `(tactic| ennreal_arith) => do
   goal.withContext do
     let target ← getMainTarget
     
-    -- Check if the goal contains division
-    let hasDivision := target.find? (fun e => e.isAppOfArity ``HDiv.hDiv 6) |>.isSome
+    -- Analyze goal patterns using our helpers
+    let patterns? ← analyzeEqualityGoal target
     
-    -- Check if the goal contains inverse
-    let hasInverse := target.find? (fun e => e.isAppOfArity ``Inv.inv 3) |>.isSome
+    match patterns? with
+    | none => 
+      -- Not an equality goal, try basic approach
+      evalTactic (← `(tactic| first
+        | ennreal_basic_simp
+        | ennreal_div_self
+        | fail "ennreal_arith expects an equality goal"))
     
-    -- Check for concrete division pattern like 18/18 = 1
-    let isConcreteDivision := target.isAppOfArity ``Eq 3 &&
-      let lhs := target.getArg! 1
-      let rhs := target.getArg! 2
-      lhs.isAppOfArity ``HDiv.hDiv 6 && 
-      (rhs.isAppOfArity ``OfNat.ofNat 3 && rhs.getArg! 1 == mkNatLit 1)
-    
-    -- Choose tactic order based on goal shape
-    let tactics : TSyntax `tactic ← 
-      if isConcreteDivision then
-        -- For concrete division patterns, prioritize fraction_add
-        `(tactic| first
-          | ennreal_fraction_add
-          | ennreal_div_self
-          | ennreal_basic_simp
-          | ennreal_mul_cancel
-          | ennreal_mul_div_assoc
-          | ennreal_inv_transform
-          | fail "ennreal_arith could not solve the goal")
-      else if hasInverse then
-        -- For inverse patterns, prioritize inv_transform and fraction_add
-        `(tactic| first
-          | ennreal_inv_transform
-          | ennreal_fraction_add
-          | ennreal_basic_simp
-          | ennreal_div_self
-          | ennreal_mul_cancel
-          | ennreal_mul_div_assoc
-          | fail "ennreal_arith could not solve the goal")
-      else if hasDivision then
-        -- For division patterns, check div_self first
-        `(tactic| first
-          | ennreal_div_self
-          | ennreal_mul_cancel
-          | ennreal_mul_div_assoc
-          | ennreal_fraction_add
-          | ennreal_basic_simp
-          | ennreal_inv_transform
-          | fail "ennreal_arith could not solve the goal")
-      else
-        -- Default order for simple arithmetic
-        `(tactic| first
-          | ennreal_basic_simp
-          | ennreal_div_self
-          | ennreal_mul_cancel
-          | ennreal_mul_div_assoc
-          | ennreal_inv_transform
-          | ennreal_fraction_add
-          | fail "ennreal_arith could not solve the goal")
-    
-    evalTactic tactics
+    | some (lhsPattern, rhsPattern) =>
+      -- Choose tactic strategy based on detected patterns
+      let tactics : TSyntax `tactic ← 
+        if isConcreteDivisionGoal target then
+          -- Concrete division like 18/18 = 1
+          `(tactic| first
+            | ennreal_fraction_add
+            | ennreal_div_self
+            | ennreal_basic_simp
+            | fail "ennreal_arith could not solve concrete division")
+        else if lhsPattern.hasInverse || rhsPattern.hasInverse then
+          -- Inverse patterns
+          `(tactic| first
+            | ennreal_inv_transform
+            | ennreal_fraction_add
+            | ennreal_basic_simp
+            | ennreal_div_self
+            | fail "ennreal_arith could not solve inverse pattern")
+        else if lhsPattern.hasMultiplicationInDivision || rhsPattern.hasMultiplicationInDivision then
+          -- Multiplication in division
+          `(tactic| first
+            | ennreal_mul_div_assoc
+            | ennreal_mul_cancel
+            | ennreal_basic_simp
+            | fail "ennreal_arith could not solve multiplication-division pattern")
+        else if lhsPattern.hasDivision || rhsPattern.hasDivision then
+          -- General division patterns
+          `(tactic| first
+            | ennreal_div_self
+            | ennreal_mul_cancel
+            | ennreal_fraction_add
+            | ennreal_basic_simp
+            | fail "ennreal_arith could not solve division pattern")
+        else if lhsPattern.isSimpleArithmetic && rhsPattern.isSimpleArithmetic then
+          -- Simple arithmetic
+          `(tactic| first
+            | ennreal_basic_simp
+            | fail "ennreal_arith could not solve simple arithmetic")
+        else
+          -- Default order
+          `(tactic| first
+            | ennreal_basic_simp
+            | ennreal_div_self
+            | ennreal_mul_cancel
+            | ennreal_mul_div_assoc
+            | ennreal_inv_transform
+            | ennreal_fraction_add
+            | fail "ennreal_arith could not solve the goal")
+      
+      evalTactic tactics
 
 section Tests
 
