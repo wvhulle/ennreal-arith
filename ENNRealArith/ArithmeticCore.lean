@@ -5,21 +5,6 @@ open ENNReal
 
 namespace ENNRealArith
 
-/-!
-# Core ENNReal Arithmetic Tactics
-
-This module contains the fundamental arithmetic tactics for ENNReal:
-- Basic simplification (`ennreal_basic_simp`)
-- Division by self patterns (`ennreal_div_self`)
-- Multiplication cancellation (`ennreal_mul_cancel`)
-
-These form the foundation for more complex ENNReal arithmetic automation.
--/
-
--- =============================================
--- BASIC SIMPLIFICATION TACTIC
--- =============================================
-
 /--
 Tactic for basic ENNReal simplifications using norm_num, norm_cast, and simp.
 Tries various combinations of these tactics to solve simple arithmetic goals.
@@ -27,33 +12,44 @@ Tries various combinations of these tactics to solve simple arithmetic goals.
 syntax "ennreal_basic_simp" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_basic_simp) => do
-  -- First try basic computation which often works
-  if ← tryBasicComputation then return
+  let goal ← getMainGoal
+  goal.withContext do
+    let target ← getMainTarget
 
-  -- Try simp with ENNReal lemmas
-  if ← tryTactic (← `(tactic| simp [ENNReal.add_eq_top, ENNReal.mul_eq_top])) then return
+    if ← tryBasicComputation then return
+    let patterns? ← analyzeEqualityGoal target
 
-  let tacticSequences := [
-    -- Standard normalization
-    [← `(tactic| norm_cast), ← `(tactic| norm_num)],
-    -- Simplify identities
-    [← `(tactic| simp only [add_zero, zero_add, mul_zero, zero_mul, mul_one, one_mul, inv_eq_one_div])],
-    -- Combination approach
-    [← `(tactic| simp only [add_zero, zero_add, mul_zero, zero_mul]), ← `(tactic| norm_num)],
-    -- Division equivalence
-    [← `(tactic| rw [ENNReal.div_eq_div_iff]), ← `(tactic| all_goals norm_num)],
-    -- Try norm_num alone for concrete computations
-    [← `(tactic| norm_num)]
-  ]
+    match patterns? with
+    | some (lhs, rhs) =>
+      let simpleArith := lhs.isSimpleArithmetic && rhs.isSimpleArithmetic
+      let hasDivision := lhs.hasDivision || rhs.hasDivision
+      let hasInverse := lhs.hasInverse || rhs.hasInverse
 
-  for sequence in tacticSequences do
-    if ← tryTacticSequence sequence then return
+      if simpleArith then
+        if ← tryTactic (← `(tactic| norm_num)) then return
+        if ← tryTactic (← `(tactic| simp only [add_zero, zero_add, mul_zero, zero_mul, mul_one, one_mul])) then return
+        if ← tryTacticSequence [← `(tactic| norm_cast), ← `(tactic| norm_num)] then return
+      else if hasDivision then
+        if ← tryTactic (← `(tactic| simp only [ENNReal.zero_div, div_one])) then return
+        if ← tryTacticSequence [← `(tactic| rw [ENNReal.div_eq_div_iff]), ← `(tactic| all_goals norm_num)] then return
+      else if hasInverse then
+        if ← tryTactic (← `(tactic| simp only [inv_eq_one_div, inv_inv])) then return
 
-  throwError "ennreal_basic_simp could not solve the goal"
+      if ← tryTactic (← `(tactic| simp [ENNReal.add_eq_top, ENNReal.mul_eq_top])) then return
+    | none =>
+      if ← tryTactic (← `(tactic| simp)) then return
 
--- =============================================
--- DIVISION BY SELF TACTIC
--- =============================================
+    let tacticSequences := [
+      [← `(tactic| norm_cast), ← `(tactic| norm_num)],
+      [← `(tactic| simp only [add_zero, zero_add, mul_zero, zero_mul, mul_one, one_mul])],
+      [← `(tactic| simp only [add_zero, zero_add, mul_zero, zero_mul]), ← `(tactic| norm_num)],
+      [← `(tactic| norm_num)]
+    ]
+
+    for sequence in tacticSequences do
+      if ← tryTacticSequence sequence then return
+
+    throwError "ennreal_basic_simp could not solve the goal"
 
 /--
 Tactic for proving ENNReal division by self equals 1.
@@ -66,15 +62,13 @@ elab_rules : tactic | `(tactic| ennreal_div_self) =>  do
   let goal ← getMainGoal
   goal.withContext do
     let target ← getMainTarget
-    
-    -- Check if it's an equality goal
+
     if !target.isAppOfArity ``Eq 3 then
       throwError "ennreal_div_self expects an equality goal"
-    
+
     let lhs := target.getArg! 1
     let _rhs := target.getArg! 2
-    
-    -- First try the standard approach for cast patterns
+
     try
       evalTactic (← `(tactic| apply ENNReal.div_self))
       evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
@@ -83,27 +77,20 @@ elab_rules : tactic | `(tactic| ennreal_div_self) =>  do
       evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
       if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
-    
-    -- For concrete division like 18/18 = 1
+
     if lhs.isAppOfArity ``HDiv.hDiv 6 then
       let num := lhs.getArg! 4
       let den := lhs.getArg! 5
-      
-      -- Check if numerator and denominator are equal
+
       if num == den then
         try
-          -- Try to prove it's nonzero and not top
           evalTactic (← `(tactic| apply ENNReal.div_self))
           evalTactic (← `(tactic| norm_num))
           evalTactic (← `(tactic| norm_num))
           if (← getUnsolvedGoals).isEmpty then return
         catch _ => pure ()
-    
-    throwError "ennreal_div_self could not solve the goal"
 
--- =============================================
--- MULTIPLICATION CANCELLATION TACTIC
--- =============================================
+    throwError "ennreal_div_self could not solve the goal"
 
 /--
 Tactic for canceling common factors in ENNReal multiplication/division expressions.
@@ -147,68 +134,4 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
 
     throwError "ennreal_mul_cancel could not solve the goal"
 
--- =============================================
--- TEST SUITES
--- =============================================
-
-section BasicSimpTests
-
--- Essential identity tests
-lemma test_addition_right_identity {a : ℕ} : (↑a : ENNReal) + 0 = ↑a := by ennreal_basic_simp
-lemma test_multiplication_right_identity {a : ℕ} : (↑a : ENNReal) * 1 = ↑a := by ennreal_basic_simp
-lemma test_division_by_one {a : ℕ} : (↑a : ENNReal) / 1 = ↑a := by ennreal_basic_simp
-
--- Key absorption properties
-lemma test_multiplication_zero_absorbing {a : ℕ} : (↑a : ENNReal) * 0 = 0 := by ennreal_basic_simp
-lemma test_zero_divided_by_any {a : ℕ} : (0 : ENNReal) / ↑a = 0 := by ennreal_basic_simp
-
--- Core concrete examples
-lemma test_addition_concrete : (↑2 : ENNReal) + ↑3 = ↑5 := by ennreal_basic_simp
-lemma test_multiplication_concrete : (↑2 : ENNReal) * ↑3 = ↑6 := by ennreal_basic_simp
-
--- Cast preservation (essential for interoperability)
-lemma test_addition_preserves_nat_cast {a b : ℕ} : (↑a : ENNReal) + (↑b : ENNReal) = ↑(a + b : ℕ) := by ennreal_basic_simp
-lemma test_multiplication_preserves_nat_cast {a b : ℕ} : (↑a : ENNReal) * (↑b : ENNReal) = ↑(a * b : ℕ) := by ennreal_basic_simp
-
-end BasicSimpTests
-
-section DivSelfTests
-
-
--- Currently fails!
-
--- Core division by self functionality
-lemma test_division_self_nonzero {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by
-  ennreal_div_self
-
-lemma test_division_self_nonzero_manual {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by
-  apply ENNReal.div_self
-  · exact ENNReal.coe_ne_zero.mpr (Nat.cast_ne_zero.mpr (by assumption))
-  · exact ENNReal.coe_ne_top
-
-lemma test_division_self_successor {n : ℕ} : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 := by ennreal_div_self
-
--- Concrete examples
-lemma test_division_self_concrete : (↑2 : ENNReal) / ↑2 = 1 := by ennreal_div_self
-
-end DivSelfTests
-
-section MulCancelTests
-
--- Core cancellation functionality
-lemma test_division_cancellation_right {a b c : ℕ} (hc : c ≠ 0) : (↑(a * c) : ENNReal) / (↑(b * c)) = (↑a) / (↑b) := by ennreal_mul_cancel
-lemma test_division_cancellation_left {a b c : ℕ} (hc : c ≠ 0) : (↑(c * a) : ENNReal) / (↑(c * b)) = (↑a) / (↑b) := by ennreal_mul_cancel
-
--- Concrete examples
-lemma test_division_cancellation_concrete : (↑(3 * 2) : ENNReal) / (↑(5 * 2)) = (↑3) / (↑5) := by
-  have : (2 : ℕ) ≠ 0 := by norm_num
-  ennreal_mul_cancel
-
--- Special cases
-lemma test_division_cancellation_zero_numerator {b c : ℕ} : (↑(0 * c) : ENNReal) / (↑(b * c)) = (↑0) / (↑b) := by ennreal_mul_cancel
-
-end MulCancelTests
-
 end ENNRealArith
-
-#lint

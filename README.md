@@ -10,11 +10,12 @@ Add this project as a dependency to your `lakefile.toml`:
 [[require]]
 scope = "wvhulle"
 name = "ennreal-arith"
+rev = "main" # or a specific commit
 ```
 
 ## Usage
 
-Import the library in your Lean files:
+Import in your Lean files:
 
 ```lean
 import ENNRealArith
@@ -31,3 +32,10 @@ example (a b c : ℕ) (hc : c ≠ 0) :
   (↑(a * c) : ENNReal) / (↑(b * c)) = ↑a / ↑b := by ennreal_arith
 ```
 
+## Testing
+
+To run unit and integration tests, use the following command:
+
+```bash
+lake test
+```
