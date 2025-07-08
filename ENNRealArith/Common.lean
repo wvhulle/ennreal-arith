@@ -56,16 +56,7 @@ def tryTactic (tac : TSyntax `tactic) : TacticM Bool := do
     return goals_after.isEmpty
   catch _ => return false
 
-/--
-Standard simplification lemmas for ENNReal arithmetic operations.
-Includes basic arithmetic identities, commutativity, associativity,
-and ENNReal-specific lemmas for division and casting.
--/
-def standardENNRealSimpLemmas : List Name := [
-  `add_zero, `zero_add, `mul_one, `one_mul, `mul_zero, `zero_mul,
-  `div_one, `one_div, `inv_inv, `mul_comm, `mul_assoc, `mul_left_comm,
-  `ENNReal.div_eq_inv_mul, `ENNReal.zero_div, `Nat.cast_mul, `Nat.cast_zero, `Nat.cast_one
-]
+
 
 /--
 Try basic computational tactics in order.
@@ -80,26 +71,6 @@ def tryBasicComputation : TacticM Bool := do
     if ← tryTactic tac then return true
   return false
 
-/--
-Common pattern for ENNReal arithmetic tactics - tries basic computation,
-then simplification, then custom sequences.
--/
-def tryStandardENNRealTactics : TacticM Bool := do
-  -- Try basic computation first
-  if ← tryBasicComputation then return true
-  
-  -- Try standard simp
-  if ← tryTactic (← `(tactic| simp only [add_zero, zero_add, mul_one, one_mul, mul_zero, zero_mul, div_one])) then return true
-  
-  return false
-
-/--
-Helper for creating ENNReal tactic with standard error message.
--/
-def createENNRealTactic (tacticName : String) (customLogic : TacticM Bool) : TacticM Unit := do
-  if ← tryStandardENNRealTactics then return
-  if ← customLogic then return
-  throwError s!"{tacticName} could not solve the goal"
 
 
 /-- Repeatedly apply a tactic while it makes progress -/
@@ -145,11 +116,11 @@ section ConcreteArithmetic
 def test_numbers : List ℕ := [2, 3, 5, 6, 7, 18]
 
 /-- Test addition preservation for natural number casts -/
-def test_addition_preserves_cast (a b : ℕ) : Prop := 
+def test_addition_preserves_cast (a b : ℕ) : Prop :=
   (↑a : ENNReal) + (↑b : ENNReal) = ↑(a + b : ℕ)
 
 /-- Test multiplication preservation for natural number casts -/
-def test_multiplication_preserves_cast (a b : ℕ) : Prop := 
+def test_multiplication_preserves_cast (a b : ℕ) : Prop :=
   (↑a : ENNReal) * (↑b : ENNReal) = ↑(a * b : ℕ)
 
 end ConcreteArithmetic
@@ -157,11 +128,11 @@ end ConcreteArithmetic
 section DivisionTests
 
 /-- Test division by self for nonzero numbers -/
-def test_division_by_self (a : ℕ) (_ : a ≠ 0) : Prop := 
+def test_division_by_self (a : ℕ) (_ : a ≠ 0) : Prop :=
   (↑a : ENNReal) / ↑a = 1
 
 /-- Test zero division property -/
-def test_zero_division (a : ℕ) : Prop := 
+def test_zero_division (a : ℕ) : Prop :=
   (0 : ENNReal) / ↑a = 0
 
 end DivisionTests
@@ -191,12 +162,12 @@ def analyzeExpr (e : Expr) : GoalPattern :=
   let hasMultiplication := e.find? (fun e => e.isAppOfArity ``HMul.hMul 6) |>.isSome
   let hasDivision := e.find? (fun e => e.isAppOfArity ``HDiv.hDiv 6) |>.isSome
   let hasInverse := e.find? (fun e => e.isAppOfArity ``Inv.inv 3) |>.isSome
-  let hasDoubleInverse := e.find? (fun e => 
-    e.isAppOfArity ``Inv.inv 3 && 
+  let hasDoubleInverse := e.find? (fun e =>
+    e.isAppOfArity ``Inv.inv 3 &&
     (e.getArg! 2).isAppOfArity ``Inv.inv 3
   ) |>.isSome
-  let hasMultiplicationInDivision := e.find? (fun e => 
-    e.isAppOfArity ``HMul.hMul 6 && 
+  let hasMultiplicationInDivision := e.find? (fun e =>
+    e.isAppOfArity ``HMul.hMul 6 &&
     ((e.getArg! 4).isAppOfArity ``HDiv.hDiv 6 ||
      (e.getArg! 5).isAppOfArity ``HDiv.hDiv 6)
   ) |>.isSome
@@ -205,7 +176,7 @@ def analyzeExpr (e : Expr) : GoalPattern :=
     let den := e.getArg! 5
     num == den
   let isSimpleArithmetic := !hasDivision && !hasInverse && (hasAddition || hasMultiplication)
-  
+
   { hasAddition, hasMultiplication, hasDivision, hasInverse, hasDoubleInverse,
     hasMultiplicationInDivision, isConcreteDivisionByOne, isSimpleArithmetic }
 
@@ -215,10 +186,10 @@ Analyze an equality goal to understand its ENNReal patterns.
 def analyzeEqualityGoal (target : Expr) : MetaM (Option (GoalPattern × GoalPattern)) := do
   if !target.isAppOfArity ``Eq 3 then
     return none
-  
+
   let lhs := target.getArg! 1
   let rhs := target.getArg! 2
-  
+
   return some (analyzeExpr lhs, analyzeExpr rhs)
 
 /--
@@ -228,7 +199,7 @@ def isConcreteDivisionGoal (target : Expr) : Bool :=
   target.isAppOfArity ``Eq 3 &&
   let lhs := target.getArg! 1
   let rhs := target.getArg! 2
-  lhs.isAppOfArity ``HDiv.hDiv 6 && 
+  lhs.isAppOfArity ``HDiv.hDiv 6 &&
   (rhs.isAppOfArity ``OfNat.ofNat 3 && rhs.getArg! 1 == mkNatLit 1)
 
 end ENNRealArith
