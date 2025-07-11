@@ -214,13 +214,15 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
           let rhsNumNat := rhsNum.getArg! 3
           let rhsDenNat := rhsDen.getArg! 3
 
-          if lhsNumNat.isAppOfArity ``HMul.hMul 6 && lhsDenNat.isAppOfArity ``HMul.hMul 6 then
-            let lhsNumA := lhsNumNat.getArg! 4
-            let lhsNumC := lhsNumNat.getArg! 5
-            let lhsDenB := lhsDenNat.getArg! 4
-            let lhsDenC := lhsDenNat.getArg! 5
-
-            if lhsNumA == rhsNumNat && lhsDenB == rhsDenNat && lhsNumC == lhsDenC then
+          -- Use QQ pattern matching instead of manual expression analysis
+          have lhsNumQ : Q(ℕ) := lhsNumNat
+          have lhsDenQ : Q(ℕ) := lhsDenNat
+          have rhsNumQ : Q(ℕ) := rhsNumNat
+          have rhsDenQ : Q(ℕ) := rhsDenNat
+          
+          match lhsNumQ, lhsDenQ with
+          | ~q($a * $c), ~q($b * $c2) =>
+            if (← isDefEq c c2) && (← isDefEq a rhsNumQ) && (← isDefEq b rhsDenQ) then
 
 
               -- Second try: Apply cancellation rules
