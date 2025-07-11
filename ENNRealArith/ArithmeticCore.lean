@@ -198,29 +198,11 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
     -- Use QQ pattern matching for the entire target
     have targetQ : Q(Prop) := target
     match targetQ with
-    | ~q(($lhs : ENNReal) / $lhsDen = ($rhs : ENNReal) / $rhsDen) =>
-        let lhsNum := lhs.getArg! 4
-        let lhsDen := lhs.getArg! 5
-        let rhsNum := rhs.getArg! 4
-        let rhsDen := rhs.getArg! 5
+    | ~q((↑$lhsNumNat : ENNReal) / (↑$lhsDenNat : ENNReal) = (↑$rhsNumNat : ENNReal) / (↑$rhsDenNat : ENNReal)) =>
 
-        if lhsNum.isAppOfArity ``Coe.coe 4 && lhsDen.isAppOfArity ``Coe.coe 4 &&
-           rhsNum.isAppOfArity ``Coe.coe 4 && rhsDen.isAppOfArity ``Coe.coe 4 then
-
-          let lhsNumNat := lhsNum.getArg! 3
-          let lhsDenNat := lhsDen.getArg! 3
-          let rhsNumNat := rhsNum.getArg! 3
-          let rhsDenNat := rhsDen.getArg! 3
-
-          -- Use QQ pattern matching instead of manual expression analysis
-          have lhsNumQ : Q(ℕ) := lhsNumNat
-          have lhsDenQ : Q(ℕ) := lhsDenNat
-          have rhsNumQ : Q(ℕ) := rhsNumNat
-          have rhsDenQ : Q(ℕ) := rhsDenNat
-
-          match lhsNumQ, lhsDenQ with
+          match lhsNumNat, lhsDenNat with
           | ~q($a * $c), ~q($b * $c2) =>
-            if (← isDefEq c c2) && (← isDefEq a rhsNumQ) && (← isDefEq b rhsDenQ) then
+            if (← isDefEq c c2) && (← isDefEq a rhsNumNat) && (← isDefEq b rhsDenNat) then
 
 
               -- Second try: Apply cancellation rules
@@ -244,7 +226,8 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
                 evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
                 if (← getUnsolvedGoals).isEmpty then return
               catch _ => pure ()
-
+          | _ => pure () -- No cancellation pattern detected
+    | _ => pure () -- Not a cancellation goal
     -- Fallback: Try generic cancellation approaches regardless of pattern detection
     let attemptCancellation : TacticM Bool := do
       try
@@ -272,5 +255,7 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
     if ← attemptCancellation then return
 
     throwError "ennreal_mul_cancel could not solve the goal"
+
+example {a b c : ℕ} (hc : c ≠ 0) : (↑(a * c) : ENNReal) / (↑(b * c)) = (↑a) / (↑b) := by ennreal_mul_cancel
 
 end ENNRealArith
