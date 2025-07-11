@@ -195,12 +195,10 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
       if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
 
-    -- Direct pattern matching without intermediate Option
-    if target.isAppOfArity ``Eq 3 then
-      let lhs := target.getArg! 1
-      let rhs := target.getArg! 2
-
-      if lhs.isAppOfArity ``HDiv.hDiv 6 && rhs.isAppOfArity ``HDiv.hDiv 6 then
+    -- Use QQ pattern matching for the entire target
+    have targetQ : Q(Prop) := target
+    match targetQ with
+    | ~q(($lhs : ENNReal) / $lhsDen = ($rhs : ENNReal) / $rhsDen) =>
         let lhsNum := lhs.getArg! 4
         let lhsDen := lhs.getArg! 5
         let rhsNum := rhs.getArg! 4
@@ -219,7 +217,7 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
           have lhsDenQ : Q(ℕ) := lhsDenNat
           have rhsNumQ : Q(ℕ) := rhsNumNat
           have rhsDenQ : Q(ℕ) := rhsDenNat
-          
+
           match lhsNumQ, lhsDenQ with
           | ~q($a * $c), ~q($b * $c2) =>
             if (← isDefEq c c2) && (← isDefEq a rhsNumQ) && (← isDefEq b rhsDenQ) then
