@@ -9,7 +9,6 @@ import Qq
 open Lean Meta Elab Tactic
 open ENNReal Qq
 
-namespace ENNRealArith
 
 /--
 Helper function to try various ways of proving a natural number is nonzero.
@@ -78,5 +77,3 @@ def isConcreteDivisionGoal (target : Expr) : MetaM Bool := do
   | ~q(($a : ENNReal) / $b = 1) => return true
   | ~q((↑$na : ENNReal) / (↑$nb : ENNReal) = 1) => return true
   | _ => return false
-
-end ENNRealArith

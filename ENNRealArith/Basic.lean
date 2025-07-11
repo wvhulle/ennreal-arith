@@ -1,24 +1,13 @@
-import ENNRealArith.ArithmeticCore
 import ENNRealArith.FractionOperations
 import Qq
 
-open Lean Meta Elab Tactic ENNReal Qq
+open Lean ENNRealArith
 
-namespace ENNRealArith
 
-syntax "ennreal_arith" : tactic
-
-elab_rules : tactic | `(tactic| ennreal_arith) => do
+elab "ennreal_arith" : tactic  => do
   let tactics := [
     ← `(tactic| ennreal_mul_cancel),
     ← `(tactic| ennreal_fraction_add)
   ]
-
   for tac in tactics do
     if ← tryTactic tac then return
-
-  throwError "ennreal_arith could not solve the goal"
-
-
-
-end ENNRealArith

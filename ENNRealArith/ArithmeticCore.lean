@@ -12,47 +12,42 @@ Tactic for proving ENNReal division by self equals 1.
 Handles goals of the form `(↑a : ENNReal) / ↑a = 1` where `a : ℕ`,
 as well as concrete cases like `18 / 18 = 1`.
 -/
-syntax "ennreal_div_self" : tactic
 
-elab_rules : tactic | `(tactic| ennreal_div_self) =>  do
+elab "ennreal_div_self" : tactic => do
   let goal ← getMainGoal
   goal.withContext do
     let target ← getMainTarget
 
-    if !target.isAppOfArity ``Eq 3 then
+    unless target.isAppOfArity ``Eq 3 do
       throwError "ennreal_div_self expects an equality goal"
 
-
-    try
+    let applyDivSelf : TacticM Unit := do
       evalTactic (← `(tactic| apply ENNReal.div_self))
       evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
       evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
       tryNonzeroProof
       evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
+
+    try
+      applyDivSelf
       if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
 
     have targetQ : Q(ENNReal) := target
-
     match targetQ with
-      | ~q(($a : ENNReal) / $b) =>
-        if ← isDefEq a b then
-          try
-            evalTactic (← `(tactic| apply ENNReal.div_self))
-            evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-            evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-            tryNonzeroProof
-            evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-          catch _ => pure ()
+    | ~q(($a : ENNReal) / $b) =>
+      if ← isDefEq a b then
+        try applyDivSelf catch _ => pure ()
+    | _ => pure ()
 
 
 /--
 Tactic for canceling common factors in ENNReal multiplication/division expressions.
 Handles patterns like `(↑(a * c) : ENNReal) / (↑(b * c)) = (↑a) / (↑b)`.
 -/
-syntax "ennreal_mul_cancel" : tactic
 
-elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
+
+elab "ennreal_mul_cancel" : tactic => do
   let goal ← getMainGoal
   goal.withContext do
     let target ← getMainTarget

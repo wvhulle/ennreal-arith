@@ -16,9 +16,7 @@ open ENNReal Qq
 
 namespace ENNRealArith
 
-syntax "ennreal_mul_div_assoc" : tactic
-
-elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
+elab "ennreal_mul_div_assoc": tactic  => do
   let goal ← getMainGoal
   goal.withContext do
     -- Try the main tactics that should handle most cases
@@ -42,9 +40,7 @@ elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
     throwError "ennreal_mul_div_assoc could not solve the goal"
 
 
-syntax "ennreal_inv_transform" : tactic
-
-elab_rules : tactic | `(tactic| ennreal_inv_transform) => do
+elab "ennreal_inv_transform" : tactic => do
   let goal ← getMainGoal
   goal.withContext do
     let target ← getMainTarget
@@ -106,9 +102,8 @@ lemma ennreal_eq_via_toReal {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
   · intro h
     rw [← ENNReal.ofReal_toReal ha, ← ENNReal.ofReal_toReal hb, h]
 
-syntax "ennreal_fraction_add" : tactic
 
-elab_rules : tactic | `(tactic| ennreal_fraction_add) => do
+elab "ennreal_fraction_add" : tactic => do
   let goal ← getMainGoal
   goal.withContext do
     let target ← getMainTarget
