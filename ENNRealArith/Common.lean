@@ -47,23 +47,3 @@ partial def repeatWhileProgress (tac : TSyntax `tactic) : TacticM Unit := do
   try evalTactic tac catch _ => return
   let after ← getMainTarget
   if before != after then repeatWhileProgress tac
-
-
-/--
-Detects concrete division goals of the form `a / b = 1` using QQ pattern matching.
-Returns true if the goal represents a concrete division that equals 1.
--/
-def isConcreteDivisionGoal (target : Expr) : MetaM Bool := do
-  -- Check that we have a Prop goal first
-  let targetType ← inferType target
-  unless ← isDefEq targetType q(Prop) do
-    return false
-
-  -- Use QQ pattern matching on the target
-  have targetQ : Q(Prop) := target
-  match targetQ with
-  | ~q(($a : ENNReal) / $b = 1) => return true
-  | ~q((↑$na : ENNReal) / (↑$nb : ENNReal) = 1) => return true
-  | _ => return false
-
-end ENNRealArith

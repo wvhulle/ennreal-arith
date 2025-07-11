@@ -53,29 +53,27 @@ elab "ennreal_mul_cancel" : tactic => do
 
 
 
-
 elab "ennreal_fraction_add" : tactic => do
   let goal ← getMainGoal
   goal.withContext do
     let target ← getMainTarget
-
-    if ← tryTactic (← `(tactic| norm_num)) then return
-
-    if ← isConcreteDivisionGoal target then
-      if ← tryTactic (← `(tactic| ennreal_div_self)) then return
-
     have targetQ : Q(Prop) := target
+    if ← tryTactic (← `(tactic| norm_num)) then return
     match targetQ with
+    | ~q(($a : ENNReal) / $b = 1) =>
+      if ← tryTactic (← `(tactic| ennreal_div_self)) then return
+    | ~q((↑$na : ENNReal) / (↑$nb : ENNReal) = 1) =>
+      if ← tryTactic (← `(tactic| ennreal_div_self)) then return
     | ~q(($num1 : ENNReal) / $denom + ($num2 : ENNReal) / $denom2 = ($res : ENNReal) / $denom3) =>
       if (← isDefEq denom denom2) && (← isDefEq denom denom3) then
-      if ← tryTactic (← `(tactic| rw [← ENNReal.add_div])) then return
-      if ← tryTactic (← `(tactic| norm_num)) then return
-
+        if ← tryTactic (← `(tactic| rw [← ENNReal.add_div])) then return
+        if ← tryTactic (← `(tactic| norm_num)) then return
     | ~q(($lhs : ENNReal) + $rhs = $sum) =>
       if ← tryTactic (← `(tactic| simp only [add_zero, zero_add])) then return
       if ← tryTactic (← `(tactic| norm_num)) then return
 
     | _ => pure ()
+    if (← getUnsolvedGoals).isEmpty then return
 
     let _ ← tryTactic (← `(tactic| simp only [add_assoc, add_zero, zero_add, inv_eq_one_div]))
 
