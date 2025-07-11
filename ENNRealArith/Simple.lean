@@ -74,52 +74,43 @@ elab "ennreal_inv_transform" : tactic => do
     | ~q((($a : ENNReal)⁻¹)⁻¹ = $b) =>
       try
         evalTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, one_div]))
-        if (← getUnsolvedGoals).isEmpty then return
       catch _ => pure ()
 
     | ~q((($a : ENNReal)⁻¹) / $b = $c) =>
       try
         evalTactic (← `(tactic| simp only [div_eq_mul_inv, mul_comm, inv_eq_one_div]))
-        if (← getUnsolvedGoals).isEmpty then return
       catch _ => pure ()
 
     | ~q((($a : ENNReal)⁻¹) * $b = $c) =>
       try
         evalTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, mul_one, one_mul, mul_comm]))
-        if (← getUnsolvedGoals).isEmpty then return
       catch _ => pure ()
       try
         evalTactic (← `(tactic| rw [← div_eq_mul_inv]))
-        if (← getUnsolvedGoals).isEmpty then return
       catch _ => pure ()
 
     | ~q(($a : ENNReal) * (($b : ENNReal)⁻¹) = $c) =>
       try
         evalTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, mul_one, one_mul, mul_comm]))
-        if (← getUnsolvedGoals).isEmpty then return
       catch _ => pure ()
       try
         evalTactic (← `(tactic| rw [← div_eq_mul_inv]))
-        if (← getUnsolvedGoals).isEmpty then return
       catch _ => pure ()
 
     | ~q(($a : ENNReal) / $b * $c = $d) =>
       try
         evalTactic (← `(tactic| simp only [one_div, inv_inv]))
         evalTactic (← `(tactic| ennreal_mul_div_assoc))
-        if (← getUnsolvedGoals).isEmpty then return
       catch _ => pure ()
 
     | _ =>
       try
         evalTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div]))
-        if (← getUnsolvedGoals).isEmpty then return
       catch _ => pure ()
 
     try
       evalTactic (← `(tactic| simp only [mul_one, one_mul, inv_inv, mul_comm, mul_assoc,
                                          div_eq_mul_inv, inv_eq_one_div, mul_div, Nat.cast_mul, one_div]))
-      if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
 
     let remainingTactics := [
