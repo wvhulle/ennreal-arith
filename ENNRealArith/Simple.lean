@@ -60,37 +60,27 @@ elab "ennreal_mul_div_assoc": tactic => do
 
 
 elab "ennreal_inv_transform" : tactic => do
-  let goal ← getMainGoal
-  goal.withContext do
-    let target ← getMainTarget
+  let target ← getMainTarget
 
-    try
-      evalTactic (← `(tactic| rfl))
-      if (← getUnsolvedGoals).isEmpty then return
-    catch _ => pure ()
+  try evalTactic (← `(tactic| rfl; done)) catch _ => pure ()
 
-    have targetQ : Q(Prop) := target
-    match targetQ with
-    | ~q((($a : ENNReal)⁻¹) * $b = $c) =>
-      evalTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, mul_one, one_mul, mul_comm]))
-      try
-        evalTactic (← `(tactic| rw [← div_eq_mul_inv]))
-      catch _ => return
-      return
-    | _ => pure ()
+  have targetQ : Q(Prop) := target
+  match targetQ with
+  | ~q((($a : ENNReal)⁻¹) * $b = $c) =>
+    evalTactic (← `(tactic| first
+      | simp only [inv_inv, inv_eq_one_div, mul_one, one_mul, mul_comm]
+      | rw [← div_eq_mul_inv]))
+    return
+  | _ => pure ()
 
+  try evalTactic (← `(tactic| first
+    | (rw [inv_inv]; done)
+    | simp only [mul_div, Nat.cast_mul])) catch _ => pure ()
+  if (← getUnsolvedGoals).isEmpty then return
 
-    try
-      evalTactic (← `(tactic| first
-        | (rw [inv_inv]; done)
-        | simp only [mul_div, Nat.cast_mul]
-        ))
-      if (← getUnsolvedGoals).isEmpty then return
-    catch _ => pure ()
+  try evalTactic (← `(tactic| rw [ENNReal.div_eq_div_iff]; all_goals norm_num)) catch _ => pure ()
 
-    evalTactic (← `(tactic| rw [ENNReal.div_eq_div_iff]; all_goals norm_num))
-
-    evalTactic (← `(tactic| all_goals assumption))
+  evalTactic (← `(tactic| all_goals assumption))
 
 
 
