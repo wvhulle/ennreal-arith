@@ -1,20 +1,51 @@
-import Mathlib.Data.ENNReal.Basic
-import Mathlib.Data.ENNReal.Real
-import Mathlib.Data.ENNReal.Inv
-import Mathlib.Tactic.Ring
-import Mathlib.Tactic.Linarith
-import Mathlib.Tactic.FieldSimp
+import ENNRealArith.Common
 import Qq
 
-import ENNRealArith.Common
-import ENNRealArith.ArithmeticCore
-
-set_option linter.docPrime false
-
-open Lean Meta Elab Tactic
-open ENNReal Qq
+open Lean Meta Elab Tactic ENNReal Qq
 
 namespace ENNRealArith
+
+/-- Convert an ENNReal equation to a Real equation when both sides are not infinity -/
+lemma ennreal_eq_via_toReal {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
+    a = b ↔ a.toReal = b.toReal := by
+  constructor
+  · intro h
+    rw [h]
+  · intro h
+    rw [← ENNReal.ofReal_toReal ha, ← ENNReal.ofReal_toReal hb, h]
+
+
+/--
+Tactic for proving ENNReal division by self equals 1.
+Handles goals of the form `(↑a : ENNReal) / ↑a = 1` where `a : ℕ`,
+as well as concrete cases like `18 / 18 = 1`.
+-/
+elab "ennreal_div_self" : tactic => do
+  let goal ← getMainGoal
+  goal.withContext do
+    let target ← getMainTarget
+
+    have targetQ : Q(Prop) := target
+    match targetQ with
+    | ~q(($a : ENNReal) / $a = 1) =>
+      -- Direct self-division pattern
+      evalTactic (← `(tactic| apply ENNReal.div_self))
+      evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
+      evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
+      tryNonzeroProof
+      evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
+      return
+    | ~q(($a : ENNReal) / $b = 1) =>
+      if ← isDefEq a b then
+        evalTactic (← `(tactic| apply ENNReal.div_self))
+        evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
+        evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
+        tryNonzeroProof
+        evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
+        return
+    | _ => pure ()
+
+
 
 elab "ennreal_mul_div_assoc": tactic  => do
   let goal ← getMainGoal
@@ -34,8 +65,6 @@ elab "ennreal_mul_div_assoc": tactic  => do
       ← `(tactic| assumption),
       ← `(tactic| exact ENNReal.coe_ne_top)
     ] then return
-
-    throwError "ennreal_mul_div_assoc could not solve the goal"
 
 
 elab "ennreal_inv_transform" : tactic => do
@@ -91,54 +120,6 @@ elab "ennreal_inv_transform" : tactic => do
     evalTactic (← `(tactic| all_goals assumption))
 
 
-/-- Convert an ENNReal equation to a Real equation when both sides are not infinity -/
-lemma ennreal_eq_via_toReal {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
-    a = b ↔ a.toReal = b.toReal := by
-  constructor
-  · intro h
-    rw [h]
-  · intro h
-    rw [← ENNReal.ofReal_toReal ha, ← ENNReal.ofReal_toReal hb, h]
 
-
-elab "ennreal_fraction_add" : tactic => do
-  let goal ← getMainGoal
-  goal.withContext do
-    let target ← getMainTarget
-
-    if ← tryTactic (← `(tactic| norm_num)) then return
-
-    if ← isConcreteDivisionGoal target then
-      if ← tryTactic (← `(tactic| ennreal_div_self)) then return
-
-    have targetQ : Q(Prop) := target
-    match targetQ with
-    | ~q(($num1 : ENNReal) / $denom + ($num2 : ENNReal) / $denom2 = ($res : ENNReal) / $denom3) =>
-      if (← isDefEq denom denom2) && (← isDefEq denom denom3) then
-      if ← tryTactic (← `(tactic| rw [← ENNReal.add_div])) then return
-      if ← tryTactic (← `(tactic| norm_num)) then return
-
-    | ~q(($lhs : ENNReal) + $rhs = $sum) =>
-      if ← tryTactic (← `(tactic| simp only [add_zero, zero_add])) then return
-      if ← tryTactic (← `(tactic| norm_num)) then return
-
-    | _ => pure ()
-
-    let _ ← tryTactic (← `(tactic| simp only [add_assoc, add_zero, zero_add, inv_eq_one_div]))
-
-    repeatWhileProgress (← `(tactic| rw [← ENNReal.add_div]))
-
-    let _ ← tryTactic (← `(tactic| ennreal_inv_transform))
-
-    if (← getUnsolvedGoals).isEmpty then return
-
-    if ← tryTacticSequence [
-      ← `(tactic| rw [ENNRealArith.ennreal_eq_via_toReal (by norm_num) (by norm_num)]),
-      ← `(tactic| rw [ENNReal.toReal_add, ENNReal.toReal_div, ENNReal.toReal_div, ENNReal.toReal_div]),
-      ← `(tactic| all_goals norm_num)
-    ] then return
-
-
-    throwError "ennreal_fraction_add could not solve the goal"
 
 end ENNRealArith

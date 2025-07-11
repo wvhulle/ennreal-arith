@@ -1,10 +1,11 @@
 import ENNRealArith.Common
-import ENNRealArith.FractionOperations
+import ENNRealArith.Complex
 import Qq
 
 open Lean Meta Elab Tactic
 
 namespace ENNRealArith
+
 
 elab "ennreal_arith" : tactic  => do
   let tactics := [
