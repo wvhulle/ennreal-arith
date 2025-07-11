@@ -143,32 +143,33 @@ elab_rules : tactic | `(tactic| ennreal_inv_transform) => do
 
     if ← tryTactic (← `(tactic| rfl)) then return
 
-    let invPattern? ← analyzeInversePattern target
-    let hasMultInDiv ← analyzeMultiplicationInDivision target
+    have targetQ : Q(Prop) := target
+    match targetQ with
+    | ~q((($a : ENNReal)⁻¹)⁻¹ = $b) =>
+      if ← tryTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, one_div])) then return
 
-    match invPattern? with
-    | some (hasInverse, hasDoubleInverse, hasInverseWithDivision, _) =>
-      if hasDoubleInverse then
-        if ← tryTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, one_div])) then return
+    | ~q((($a : ENNReal)⁻¹) / $b = $c) =>
+      if ← tryTactic (← `(tactic| simp only [div_eq_mul_inv, mul_comm, inv_eq_one_div])) then return
 
-      if hasInverseWithDivision then
-        if ← tryTactic (← `(tactic| simp only [div_eq_mul_inv, mul_comm, inv_eq_one_div])) then return
+    | ~q(($a : ENNReal) * (($b : ENNReal)⁻¹) = $c) =>
+      if ← tryTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, mul_one, one_mul, mul_comm])) then return
+      if ← tryTactic (← `(tactic| rw [← div_eq_mul_inv])) then return
 
-      if hasInverse && !hasInverseWithDivision then
-        if ← tryTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, mul_one, one_mul, mul_comm])) then return
-        if ← tryTactic (← `(tactic| rw [← div_eq_mul_inv])) then return
+    | ~q((($a : ENNReal)⁻¹) * $b = $c) =>
+      if ← tryTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, mul_one, one_mul, mul_comm])) then return
+      if ← tryTactic (← `(tactic| rw [← div_eq_mul_inv])) then return
 
-      if hasMultInDiv then
-        if ← tryTacticSequence [
-          ← `(tactic| simp only [one_div, inv_inv]),
-          ← `(tactic| ennreal_mul_div_assoc)
-        ] then return
+    | ~q(($a : ENNReal) / $b * $c = $d) =>
+      if ← tryTacticSequence [
+        ← `(tactic| simp only [one_div, inv_inv]),
+        ← `(tactic| ennreal_mul_div_assoc)
+      ] then return
 
-      if ← tryTactic (← `(tactic| simp only [mul_one, one_mul, inv_inv, mul_comm, mul_assoc,
-                                             div_eq_mul_inv, inv_eq_one_div, mul_div, Nat.cast_mul, one_div])) then return
-
-    | none =>
+    | _ =>
       if ← tryTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div])) then return
+
+    if ← tryTactic (← `(tactic| simp only [mul_one, one_mul, inv_inv, mul_comm, mul_assoc,
+                                           div_eq_mul_inv, inv_eq_one_div, mul_div, Nat.cast_mul, one_div])) then return
 
     let remainingTactics := [
       ← `(tactic| rw [inv_inv]),
@@ -186,6 +187,9 @@ elab_rules : tactic | `(tactic| ennreal_inv_transform) => do
     ] then return
 
     evalTactic (← `(tactic| all_goals assumption))
+
+example {a b : ℕ} (_ha : a ≠ 0) : (↑a : ENNReal)⁻¹ * (↑b : ENNReal) = (↑b : ENNReal) / (↑a : ENNReal) := by ennreal_inv_transform
+
 
 /-- Convert an ENNReal equation to a Real equation when both sides are not infinity -/
 lemma ennreal_eq_via_toReal {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
