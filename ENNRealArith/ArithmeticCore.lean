@@ -195,40 +195,29 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
       if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
 
-    -- Use QQ pattern matching for the entire target
     have targetQ : Q(Prop) := target
     match targetQ with
-    | ~q((↑$lhsNumNat : ENNReal) / (↑$lhsDenNat : ENNReal) = (↑$rhsNumNat : ENNReal) / (↑$rhsDenNat : ENNReal)) =>
+    | ~q((↑($a * $c) : ENNReal) / (↑($b * $c2) : ENNReal) = (↑$a2 : ENNReal) / (↑$b2 : ENNReal)) =>
+      if (← isDefEq c c2) && (← isDefEq a a2) && (← isDefEq b b2) then
 
-          match lhsNumNat, lhsDenNat with
-          | ~q($a * $c), ~q($b * $c2) =>
-            if (← isDefEq c c2) && (← isDefEq a rhsNumNat) && (← isDefEq b rhsDenNat) then
+        let cancelTactics := [
+          (← `(tactic| apply ENNReal.mul_div_mul_right)),
+          (← `(tactic| apply ENNReal.mul_div_mul_left))
+        ]
 
+        for cancelTactic in cancelTactics do
+          try
+            evalTactic (← `(tactic| rw [Nat.cast_mul, Nat.cast_mul]))
+            evalTactic cancelTactic
+            evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
+            evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
+            tryNonzeroProof
+            evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
+            if (← getUnsolvedGoals).isEmpty then return
+          catch _ => pure ()
 
-              -- Second try: Apply cancellation rules
-              try
-                evalTactic (← `(tactic| rw [Nat.cast_mul, Nat.cast_mul]))
-                evalTactic (← `(tactic| apply ENNReal.mul_div_mul_right))
-                evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-                evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-                tryNonzeroProof
-                evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-                if (← getUnsolvedGoals).isEmpty then return
-              catch _ => pure ()
+    | _ => pure ()
 
-              -- Third try: Left cancellation
-              try
-                evalTactic (← `(tactic| rw [Nat.cast_mul, Nat.cast_mul]))
-                evalTactic (← `(tactic| apply ENNReal.mul_div_mul_left))
-                evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-                evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-                tryNonzeroProof
-                evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-                if (← getUnsolvedGoals).isEmpty then return
-              catch _ => pure ()
-          | _ => pure () -- No cancellation pattern detected
-    | _ => pure () -- Not a cancellation goal
-    -- Fallback: Try generic cancellation approaches regardless of pattern detection
     let attemptCancellation : TacticM Bool := do
       try
         evalTactic (← `(tactic| rw [Nat.cast_mul, Nat.cast_mul]))
