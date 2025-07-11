@@ -10,7 +10,6 @@ Tactic for proving ENNReal division by self equals 1.
 Handles goals of the form `(↑a : ENNReal) / ↑a = 1` where `a : ℕ`,
 as well as concrete cases like `18 / 18 = 1`.
 -/
-
 elab "ennreal_div_self" : tactic => do
   let goal ← getMainGoal
   goal.withContext do

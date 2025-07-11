@@ -10,18 +10,9 @@ open Lean Meta Elab Tactic
 open ENNReal Qq
 
 
-/--
-Helper function to try various ways of proving a natural number is nonzero.
-Used by multiple tactics that need to establish nonzero conditions.
--/
+
 def tryNonzeroProof : TacticM Unit := do
-  evalTactic (← `(tactic| 
-    first 
-    | assumption
-    | apply ne_of_gt; assumption  
-    | norm_num
-    | exact Nat.succ_ne_zero _
-    | fail "Could not prove nonzero condition"))
+  evalTactic (← `(tactic| first | assumption | norm_num))
 
 def tryTacticSequence (tactics : List (TSyntax `tactic)) : TacticM Bool := do
   try
