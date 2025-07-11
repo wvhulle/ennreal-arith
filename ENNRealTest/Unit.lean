@@ -30,7 +30,8 @@ example {a : ℕ} (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by
   · exact ENNReal.coe_ne_top
 
 example {n : ℕ} : (↑(n + 1) : ENNReal) / ↑(n + 1) = 1 := by ennreal_div_self
-example : (↑2 : ENNReal) / ↑2 = 1 := by ennreal_div_self
+example : (↑2 : ENNReal) / ↑2 = 1 := by
+  ennreal_div_self
 
 end DivSelfTests
 
