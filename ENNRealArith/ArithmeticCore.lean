@@ -48,36 +48,12 @@ Handles patterns like `(↑(a * c) : ENNReal) / (↑(b * c)) = (↑a) / (↑b)`.
 elab "ennreal_mul_cancel" : tactic => do
   let goal ← getMainGoal
   goal.withContext do
-    let target ← getMainTarget
 
     try
       evalTactic (← `(tactic| simp only [Nat.cast_mul, zero_mul, mul_one, one_mul, mul_zero,
                                         ENNReal.zero_div, Nat.cast_zero, Nat.cast_one]))
       if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
-
-    have targetQ : Q(Prop) := target
-    match targetQ with
-    | ~q((↑($a * $c) : ENNReal) / (↑($b * $c2) : ENNReal) = (↑$a2 : ENNReal) / (↑$b2 : ENNReal)) =>
-      if (← isDefEq c c2) && (← isDefEq a a2) && (← isDefEq b b2) then
-
-        let cancelTactics := [
-          (← `(tactic| apply ENNReal.mul_div_mul_right)),
-          (← `(tactic| apply ENNReal.mul_div_mul_left))
-        ]
-
-        for cancelTactic in cancelTactics do
-          try
-            evalTactic (← `(tactic| rw [Nat.cast_mul, Nat.cast_mul]))
-            evalTactic cancelTactic
-            evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-            evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-            tryNonzeroProof
-            evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-            if (← getUnsolvedGoals).isEmpty then return
-          catch _ => pure ()
-
-    | _ => pure ()
 
     let attemptCancellation : TacticM Bool := do
       try
