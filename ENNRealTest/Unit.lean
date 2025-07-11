@@ -97,38 +97,42 @@ end EdgeCaseTests
 
 section ComplexFractionTests
 
--- More complex fraction additions
+lemma add_div_div {a b c d : ENNReal} {hb : b ≠ 0} {hd : d ≠ 0} {hbf: b ≠ ⊤} {hdf: d ≠ ⊤} :
+    a / b + c / d = (a * d + b * c) / (b * d) := by
+
+  have h1 : a / b = (a * d) / (b * d) := by
+    refine Eq.symm (ENNReal.mul_div_mul_right a b hd ?_)
+    assumption
+  have h2 : c / d = (b * c) / (b * d) := by
+    refine Eq.symm (ENNReal.mul_div_mul_left c d hb ?_)
+    assumption
+  rw [h1, h2, ← ENNReal.add_div]
+
+
+lemma add_three_div {a b c d e f : ENNReal}
+    {hd : d ≠ 0} {he : e ≠ 0} {hf : f ≠ 0}
+    {hd' : d ≠ ⊤} {he' : e ≠ ⊤} {hf' : f ≠ ⊤} :
+    a / d + b / e + c / f = (a * e * f + b * d * f + c * d * e) / (d * e * f) := by
+  rw [@add_div_div a d b e hd he hd' he']
+  rw [@add_div_div (a * e + d * b) (d * e) c f (mul_ne_zero hd he) hf (mul_ne_top hd' he') hf']
+  simp only [mul_comm, mul_left_comm]
+  ring_nf
+
+
+
 example : (1 : ENNReal) / 2 + 1 / 3 = 5 / 6 := by
-  calc (1 : ENNReal) / 2 + 1 / 3
-    _ = (3 / 6 : ENNReal) + (1 / 3 : ENNReal) := by
-      have : (3 / 6 : ENNReal) = (1 : ENNReal) / 2 := by
-        rw [ENNReal.div_eq_div_iff]
-        all_goals norm_num
-      rw [this]
-    _ = (3 / 6 : ENNReal) + (2 / 6 : ENNReal) := by
-      have : (1 : ENNReal) / 3 = (2 : ENNReal) / 6 := by
-        rw [ENNReal.div_eq_div_iff]
-        all_goals norm_num
-      rw [this]
-    _ = 5 / 6 := by
-      rw [ENNReal.div_add_div_same]
-      rw [ENNReal.div_eq_div_iff]
-      all_goals norm_num
+  rw [add_div_div]
+  all_goals norm_num
 
 example : (1 : ENNReal) / 4 + 1 / 4 = 1 / 2 := by
   ennreal_arith
 
 example : (2 : ENNReal) / 3 + 1 / 6 = 5 / 6 := by
-  calc (2 : ENNReal) / 3 + 1 / 6
-    _ = (4 / 6 : ENNReal) + (1 / 6 : ENNReal) := by
-      have : (4 / 6 : ENNReal) = (2 : ENNReal) / 3 := by
-        rw [ENNReal.div_eq_div_iff]
-        all_goals norm_num
-      rw [this]
-    _ = 5 / 6 := by
-      rw [ENNReal.div_add_div_same]
-      rw [ENNReal.div_eq_div_iff]
-      all_goals norm_num
+  rw [add_div_div]
+  · norm_num
+    rw [ENNReal.div_eq_div_iff]
+    all_goals norm_num
+  all_goals norm_num
 
 example : (3 : ENNReal) / 8 + 1 / 8 = 1 / 2 := by
   ennreal_arith
@@ -138,24 +142,13 @@ example : (1 : ENNReal) / 5 + 2 / 5 + 1 / 5 = 4 / 5 := by
   norm_num
 
 example : (1 : ENNReal) / 2 + 1 / 3 + 1 / 6 = 1 := by
-  calc (1 : ENNReal) / 2 + 1 / 3 + 1 / 6
-    _ = (3 / 6 : ENNReal) + (1 / 3 : ENNReal) + (1 / 6 : ENNReal) := by
-      have : (3 / 6 : ENNReal) = (1 : ENNReal) / 2 := by
-        rw [ENNReal.div_eq_div_iff]
-        all_goals norm_num
-      rw [this]
-    _ = (3 / 6 : ENNReal) + (2 / 6 : ENNReal) + (1 / 6 : ENNReal) := by
-      have : (1 / 3 : ENNReal) = (2 : ENNReal) / 6 := by
-        rw [ENNReal.div_eq_div_iff]
-        all_goals norm_num
-      rw [this]
-    _ = (3 + 2 + 1) / 6 := by
-      rw [ENNReal.div_add_div_same]
-      exact ENNReal.div_add_div_same
-    _ = 6 / 6 := by norm_num
-    _ = 1 := by
-      rw [ENNReal.div_self]
-      all_goals norm_num
+  rw [add_div_div]
+  norm_num
+  rw [inv_eq_one_div]
+  rw [ENNReal.div_add_div_same]
+  all_goals norm_num
+  rw [ENNReal.div_self]
+  all_goals norm_num
 
 example : (1 : ENNReal) / 4 + 1 / 4 + 1 / 2 = 1 := by
    calc (1 : ENNReal) / 4 + 1 / 4 + 1 / 2
@@ -172,7 +165,6 @@ example : (1 : ENNReal) / 4 + 1 / 4 + 1 / 2 = 1 := by
        rw [ENNReal.div_self]
        all_goals norm_num
 
--- Mixed whole numbers and fractions
 example : 2 + (1 : ENNReal) / 2 = 5 / 2 := by
   calc 2 + (1 : ENNReal) / 2
     _ = (4 / 2 : ENNReal) + (1 / 2 : ENNReal) := by
@@ -280,14 +272,29 @@ end InverseTests
 
 section MixedOperationTests
 
+-- General lemma: (a * b) / a = b when a ≠ 0 and a ≠ ⊤
+lemma ennreal_mul_div_cancel_left {a b : ENNReal} (ha : a ≠ 0) (ha' : a ≠ ⊤) :
+    (a * b) / a = b := by
+  rw [mul_comm a b]
+  rw [mul_div_assoc]
+  rw [ENNReal.div_self ha ha']
+  simp
+
 example : (2 : ENNReal) * 3 / 4 + 1 / 2 = 2 := by
-  rw [show (1 : ENNReal) / 2 = 2 / 4 by
-    rw [ENNReal.div_eq_div_iff]; all_goals norm_num]
-  rw [ENNReal.div_add_div_same]
-  refine Eq.symm ((fun {a b} ha hb => (toReal_eq_toReal ha hb).mp) ?_ ?_ ?_)
-  norm_cast
-  refine div_ne_top ?_ ?_
-  all_goals norm_num
+  rw [show (2 : ENNReal) * 3 = 6 by norm_num]
+  rw [add_div_div]
+  · rw [show (6 * 2 + 4 * 1 : ENNReal) = 16 by norm_num]
+    rw [show (4 * 2 : ENNReal) = 8 by norm_num]
+    rw [show (16 : ENNReal) = 2 * 8 by norm_num]
+    rw [mul_div_assoc]
+    rw [ENNReal.div_self]
+    · simp
+    · norm_num
+    · norm_num
+  · norm_num
+  · norm_num
+  · norm_num
+  · norm_num
 
 example : ((3 : ENNReal) / 4) * (8 / 3) = 2 := by
   calc ((3 : ENNReal) / 4) * (8 / 3)
@@ -326,30 +333,40 @@ example : ((2 : ENNReal) + 3) * 4 / 5 = 4 := by
     _ = (5 : ENNReal) * 4 / 5 := by
       norm_num
     _ = 4 := by
-      -- rw [mul_div_assoc]
-      rw [mul_comm]
-      rw [mul_div_assoc]
-      rw [ENNReal.div_self]
-      all_goals norm_num
+      apply ennreal_mul_div_cancel_left
+      · norm_num
+      · norm_num
 
+-- For ENNReal, we can use the fact that division is defined properly
+-- This is a simplified version - in practice you'd want the full general lemma
+lemma ennreal_div_div {a : ENNReal} {b c : ENNReal} (hb : b ≠ 0) (hc : c ≠ 0) :
+    (a / b) / c = a / (b * c) := by
+  rw [div_eq_mul_inv, div_eq_mul_inv, div_eq_mul_inv]
+  rw [mul_assoc]
+  congr 1
+  refine Eq.symm (ENNReal.mul_inv ?_ ?_)
+  · exact Or.inl hb
+  · exact Or.inr hc
+
+-- General lemma for when numerator equals denominator product
+lemma div_mul_self_eq_one {a b : ENNReal} (ha : a ≠ 0) (ha' : a ≠ ⊤) (hb : b ≠ 0) (hb' : b ≠ ⊤) :
+    (a * b) / (b * a) = 1 := by
+  rw [mul_comm a b]
+  exact ENNReal.div_self (mul_ne_zero hb ha) (mul_ne_top hb' ha')
+
+-- Now the specific example using the general lemmas
 example : (6 : ENNReal) / 2 / 3 = 1 := by
   calc (6 : ENNReal) / 2 / 3
-    _ = (6 / 2) / 3 := by norm_num
-    _ = 6  / (3 * 2) := by
-
-      rw [ENNReal.div_eq_div_iff]
+    _ = 6 / (2 * 3) := by
+      apply ennreal_div_div
+      · norm_num
+      · norm_num
+    _ = (2 * 3) / (2 * 3) := by
       norm_num
-      rw [show (6 : ENNReal) = 3 * 2 by norm_num]
-      rw [mul_div_assoc]
-      rw [ENNReal.div_self]
-      · ring
-      · norm_num
-      · norm_num
-      all_goals norm_num
     _ = 1 := by
-      norm_num
-      refine (div_eq_one_iff ?_ ?_).mpr rfl
-      all_goals norm_num
+      apply ENNReal.div_self
+      · norm_num
+      · norm_num
 
 
 end MixedOperationTests
