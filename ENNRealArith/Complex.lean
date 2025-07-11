@@ -40,9 +40,7 @@ elab "ennreal_mul_cancel" : tactic => do
       let tryMulDiv (tac : TSyntax `tactic) : TacticM Bool := do
         try
           evalTactic tac
-          evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-          evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-          tryNonzeroProof
+          proveENNRealCoeNonzero
           evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
           return (← getUnsolvedGoals).isEmpty
         catch _ => return false

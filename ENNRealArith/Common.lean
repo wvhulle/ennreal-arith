@@ -9,10 +9,13 @@ import Qq
 open Lean Meta Elab Tactic
 open ENNReal Qq
 
+namespace ENNRealArith
+
 
 
 def tryNonzeroProof : TacticM Unit := do
   evalTactic (← `(tactic| first | assumption | norm_num))
+
 
 def tryTacticSequence (tactics : List (TSyntax `tactic)) : TacticM Bool := do
   try
@@ -62,3 +65,5 @@ def isConcreteDivisionGoal (target : Expr) : MetaM Bool := do
   | ~q(($a : ENNReal) / $b = 1) => return true
   | ~q((↑$na : ENNReal) / (↑$nb : ENNReal) = 1) => return true
   | _ => return false
+
+end ENNRealArith

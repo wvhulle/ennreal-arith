@@ -14,6 +14,13 @@ lemma ennreal_eq_via_toReal {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
   · intro h
     rw [← ENNReal.ofReal_toReal ha, ← ENNReal.ofReal_toReal hb, h]
 
+/-- Helper to prove that a casted natural number is non-zero in ENNReal -/
+def proveENNRealCoeNonzero : TacticM Unit := do
+  evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
+  evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
+  tryNonzeroProof
+
+
 
 /--
 Tactic for proving ENNReal division by self equals 1.
@@ -30,9 +37,7 @@ elab "ennreal_div_self" : tactic => do
     | ~q(($a : ENNReal) / $a = 1) =>
       -- Direct self-division pattern
       evalTactic (← `(tactic| apply ENNReal.div_self))
-      evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-      evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-      tryNonzeroProof
+      proveENNRealCoeNonzero
       evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
       return
     | ~q(($a : ENNReal) / $b = 1) =>
