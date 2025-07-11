@@ -58,7 +58,10 @@ elab "ennreal_fraction_add" : tactic => do
   goal.withContext do
     let target ← getMainTarget
     have targetQ : Q(Prop) := target
-    if ← tryTactic (← `(tactic| norm_num)) then return
+
+    for tac in [← `(tactic| norm_num), ← `(tactic| simp only [add_zero, zero_add])] do
+      if ← tryTactic tac then return
+
     match targetQ with
     | ~q(($a : ENNReal) / $b = 1) =>
       if ← tryTactic (← `(tactic| ennreal_div_self)) then return
@@ -66,25 +69,21 @@ elab "ennreal_fraction_add" : tactic => do
       if ← tryTactic (← `(tactic| ennreal_div_self)) then return
     | ~q(($num1 : ENNReal) / $denom + ($num2 : ENNReal) / $denom2 = ($res : ENNReal) / $denom3) =>
       if (← isDefEq denom denom2) && (← isDefEq denom denom3) then
-        if ← tryTactic (← `(tactic| rw [← ENNReal.add_div])) then return
-        if ← tryTactic (← `(tactic| norm_num)) then return
+        if ← tryTacticSequence [← `(tactic| rw [← ENNReal.add_div]), ← `(tactic| norm_num)] then return
     | ~q(($lhs : ENNReal) + $rhs = $sum) =>
-      if ← tryTactic (← `(tactic| simp only [add_zero, zero_add])) then return
       if ← tryTactic (← `(tactic| norm_num)) then return
-
     | _ => pure ()
+
     if (← getUnsolvedGoals).isEmpty then return
 
     let _ ← tryTactic (← `(tactic| simp only [add_assoc, add_zero, zero_add, inv_eq_one_div]))
-
     repeatWhileProgress (← `(tactic| rw [← ENNReal.add_div]))
-
     let _ ← tryTactic (← `(tactic| ennreal_inv_transform))
 
     if (← getUnsolvedGoals).isEmpty then return
 
-    if ← tryTacticSequence [
+    let _ ← tryTacticSequence [
       ← `(tactic| rw [ENNRealArith.ennreal_eq_via_toReal (by norm_num) (by norm_num)]),
       ← `(tactic| rw [ENNReal.toReal_add, ENNReal.toReal_div, ENNReal.toReal_div, ENNReal.toReal_div]),
       ← `(tactic| all_goals norm_num)
-    ] then return
+    ]

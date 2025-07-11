@@ -64,12 +64,7 @@ elab "ennreal_mul_div_assoc": tactic  => do
     for tac in mainTactics do
       if ← tryTactic tac then return
 
-    if ← tryTacticSequence [
-      ← `(tactic| apply ENNReal.div_self),
-      ← `(tactic| apply Nat.cast_ne_zero.mpr),
-      ← `(tactic| assumption),
-      ← `(tactic| exact ENNReal.coe_ne_top)
-    ] then return
+    evalTactic (← `(tactic| first | apply ENNReal.div_self | apply Nat.cast_ne_zero.mpr | assumption | exact ENNReal.coe_ne_top))
 
 
 elab "ennreal_inv_transform" : tactic => do
