@@ -21,32 +21,26 @@ Analyzes inverse patterns using QQ pattern matching.
 Returns booleans for: hasInverse, hasDoubleInverse, hasInverseWithDivision, hasInverseWithMultiplication
 -/
 def analyzeInversePattern (target : Expr) : MetaM (Option (Bool × Bool × Bool × Bool)) := do
-  -- Check that we have a Prop goal
   let targetType ← inferType target
   unless ← isDefEq targetType q(Prop) do
     return none
 
-  -- Use QQ pattern matching on the target
   have targetQ : Q(Prop) := target
   match targetQ with
 
-  -- Double inverse patterns: a⁻¹⁻¹ = b
   | ~q((($a : ENNReal)⁻¹)⁻¹ = $b) => return some (true, true, false, false)
   | ~q(($a : ENNReal) = (($b)⁻¹)⁻¹) => return some (true, true, false, false)
 
-  -- Inverse with division: a⁻¹ / b = c or a / b⁻¹ = c
   | ~q((($a : ENNReal)⁻¹) / $b = $c) => return some (true, false, true, false)
   | ~q(($a : ENNReal) / (($b)⁻¹) = $c) => return some (true, false, true, false)
   | ~q(($a : ENNReal) = (($b)⁻¹) / $c) => return some (true, false, true, false)
   | ~q(($a : ENNReal) = $b / (($c)⁻¹)) => return some (true, false, true, false)
 
-  -- Inverse with multiplication: a⁻¹ * b = c or a * b⁻¹ = c
   | ~q((($a : ENNReal)⁻¹) * $b = $c) => return some (true, false, false, true)
   | ~q(($a : ENNReal) * (($b)⁻¹) = $c) => return some (true, false, false, true)
   | ~q(($a : ENNReal) = (($b)⁻¹) * $c) => return some (true, false, false, true)
   | ~q(($a : ENNReal) = $b * (($c)⁻¹)) => return some (true, false, false, true)
 
-  -- Inverse with both division and multiplication: a⁻¹ * b / c = d
   | ~q((($a : ENNReal)⁻¹) * $b / $c = $d) => return some (true, false, true, true)
   | ~q(($a : ENNReal) * (($b)⁻¹) / $c = $d) => return some (true, false, true, true)
   | ~q(($a : ENNReal) / $b * (($c)⁻¹) = $d) => return some (true, false, true, true)
@@ -54,11 +48,9 @@ def analyzeInversePattern (target : Expr) : MetaM (Option (Bool × Bool × Bool 
   | ~q(($a : ENNReal) = $b * (($c)⁻¹) / $d) => return some (true, false, true, true)
   | ~q(($a : ENNReal) = $b / $c * (($d)⁻¹)) => return some (true, false, true, true)
 
-  -- Simple inverse patterns: a⁻¹ = b
   | ~q((($a : ENNReal)⁻¹) = $b) => return some (true, false, false, false)
   | ~q(($a : ENNReal) = (($b)⁻¹)) => return some (true, false, false, false)
 
-  -- Complex patterns with addition and inverse
   | ~q((($a : ENNReal)⁻¹) + $b = $c) => return some (true, false, false, false)
   | ~q(($a : ENNReal) + (($b)⁻¹) = $c) => return some (true, false, false, false)
   | ~q(($a : ENNReal) = (($b)⁻¹) + $c) => return some (true, false, false, false)
@@ -105,34 +97,28 @@ syntax "ennreal_mul_div_assoc" : tactic
 elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
   let goal ← getMainGoal
   goal.withContext do
-    let target ← getMainTarget
+    -- Try the main tactics that should handle most cases
+    let mainTactics := [
+      ← `(tactic| simp only [mul_div, ENNReal.mul_comm_div, one_mul, mul_one, Nat.cast_mul]),
+      ← `(tactic| norm_num),
+      ← `(tactic| simp only [mul_one, one_mul, Nat.cast_mul])
+    ]
 
-    let hasMultInDiv ← analyzeMultiplicationInDivision target
-    let basicPattern? ← analyzeBasicArithmeticPattern target
+    for tac in mainTactics do
+      if ← tryTactic tac then return
 
-    match basicPattern? with
-    | some (hasAddition, hasMultiplication, hasDivision, hasInverse) =>
-      let hasSimpleArith := (hasAddition || hasMultiplication) && !hasDivision && !hasInverse
-
-      if hasMultInDiv then
-        if ← tryTactic (← `(tactic| simp only [mul_div, ENNReal.mul_comm_div, one_mul, mul_one, Nat.cast_mul])) then return
-      else if hasSimpleArith then
-        if ← tryTactic (← `(tactic| norm_num)) then return
-        if ← tryTactic (← `(tactic| simp only [mul_one, one_mul, Nat.cast_mul])) then return
-
-      if ← tryTactic (← `(tactic| simp only [mul_div, ENNReal.mul_comm_div, one_mul, mul_one, Nat.cast_mul])) then return
-
-      if ← tryTacticSequence [
-        ← `(tactic| apply ENNReal.div_self),
-        ← `(tactic| apply Nat.cast_ne_zero.mpr),
-        ← `(tactic| assumption),
-        ← `(tactic| exact ENNReal.coe_ne_top)
-      ] then return
-
-    | none =>
-      throwError "ennreal_mul_div_assoc expects an equality goal"
+    -- Fallback for division self cases
+    if ← tryTacticSequence [
+      ← `(tactic| apply ENNReal.div_self),
+      ← `(tactic| apply Nat.cast_ne_zero.mpr),
+      ← `(tactic| assumption),
+      ← `(tactic| exact ENNReal.coe_ne_top)
+    ] then return
 
     throwError "ennreal_mul_div_assoc could not solve the goal"
+
+example : (↑2 : ENNReal) * ((↑3 : ENNReal) / (↑5 : ENNReal)) = (↑2 * ↑3 : ENNReal) / (↑5 : ENNReal) := by ennreal_mul_div_assoc
+
 
 syntax "ennreal_inv_transform" : tactic
 
@@ -151,11 +137,11 @@ elab_rules : tactic | `(tactic| ennreal_inv_transform) => do
     | ~q((($a : ENNReal)⁻¹) / $b = $c) =>
       if ← tryTactic (← `(tactic| simp only [div_eq_mul_inv, mul_comm, inv_eq_one_div])) then return
 
-    | ~q(($a : ENNReal) * (($b : ENNReal)⁻¹) = $c) =>
+    | ~q((($a : ENNReal)⁻¹) * $b = $c) =>
       if ← tryTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, mul_one, one_mul, mul_comm])) then return
       if ← tryTactic (← `(tactic| rw [← div_eq_mul_inv])) then return
 
-    | ~q((($a : ENNReal)⁻¹) * $b = $c) =>
+    | ~q(($a : ENNReal) * (($b : ENNReal)⁻¹) = $c) =>
       if ← tryTactic (← `(tactic| simp only [inv_inv, inv_eq_one_div, mul_one, one_mul, mul_comm])) then return
       if ← tryTactic (← `(tactic| rw [← div_eq_mul_inv])) then return
 
