@@ -16,82 +16,6 @@ open ENNReal Qq
 
 namespace ENNRealArith
 
-/--
-Analyzes inverse patterns using QQ pattern matching.
-Returns booleans for: hasInverse, hasDoubleInverse, hasInverseWithDivision, hasInverseWithMultiplication
--/
-def analyzeInversePattern (target : Expr) : MetaM (Option (Bool × Bool × Bool × Bool)) := do
-  let targetType ← inferType target
-  unless ← isDefEq targetType q(Prop) do
-    return none
-
-  have targetQ : Q(Prop) := target
-  match targetQ with
-
-  | ~q((($a : ENNReal)⁻¹)⁻¹ = $b) => return some (true, true, false, false)
-  | ~q(($a : ENNReal) = (($b)⁻¹)⁻¹) => return some (true, true, false, false)
-
-  | ~q((($a : ENNReal)⁻¹) / $b = $c) => return some (true, false, true, false)
-  | ~q(($a : ENNReal) / (($b)⁻¹) = $c) => return some (true, false, true, false)
-  | ~q(($a : ENNReal) = (($b)⁻¹) / $c) => return some (true, false, true, false)
-  | ~q(($a : ENNReal) = $b / (($c)⁻¹)) => return some (true, false, true, false)
-
-  | ~q((($a : ENNReal)⁻¹) * $b = $c) => return some (true, false, false, true)
-  | ~q(($a : ENNReal) * (($b)⁻¹) = $c) => return some (true, false, false, true)
-  | ~q(($a : ENNReal) = (($b)⁻¹) * $c) => return some (true, false, false, true)
-  | ~q(($a : ENNReal) = $b * (($c)⁻¹)) => return some (true, false, false, true)
-
-  | ~q((($a : ENNReal)⁻¹) * $b / $c = $d) => return some (true, false, true, true)
-  | ~q(($a : ENNReal) * (($b)⁻¹) / $c = $d) => return some (true, false, true, true)
-  | ~q(($a : ENNReal) / $b * (($c)⁻¹) = $d) => return some (true, false, true, true)
-  | ~q(($a : ENNReal) = (($b)⁻¹) * $c / $d) => return some (true, false, true, true)
-  | ~q(($a : ENNReal) = $b * (($c)⁻¹) / $d) => return some (true, false, true, true)
-  | ~q(($a : ENNReal) = $b / $c * (($d)⁻¹)) => return some (true, false, true, true)
-
-  | ~q((($a : ENNReal)⁻¹) = $b) => return some (true, false, false, false)
-  | ~q(($a : ENNReal) = (($b)⁻¹)) => return some (true, false, false, false)
-
-  | ~q((($a : ENNReal)⁻¹) + $b = $c) => return some (true, false, false, false)
-  | ~q(($a : ENNReal) + (($b)⁻¹) = $c) => return some (true, false, false, false)
-  | ~q(($a : ENNReal) = (($b)⁻¹) + $c) => return some (true, false, false, false)
-  | ~q(($a : ENNReal) = $b + (($c)⁻¹)) => return some (true, false, false, false)
-
-  | _ => return none
-
-/--
-Detects multiplication in division patterns using QQ pattern matching.
-Returns whether the expression contains multiplication with division.
--/
-def analyzeMultiplicationInDivision (target : Expr) : MetaM Bool := do
-  -- Check that we have a Prop goal
-  let targetType ← inferType target
-  unless ← isDefEq targetType q(Prop) do
-    return false
-
-  -- Use QQ pattern matching on the target
-  have targetQ : Q(Prop) := target
-  match targetQ with
-
-  -- Patterns with multiplication and division: (a * (b / c)) = d or (a / b) * c = d
-  | ~q(($a : ENNReal) * ($b / $c) = $d) => return true
-  | ~q(($a / $b : ENNReal) * $c = $d) => return true
-  | ~q(($a : ENNReal) = $b * ($c / $d)) => return true
-  | ~q(($a : ENNReal) = ($b / $c) * $d) => return true
-
-  -- More complex patterns with nat casts
-  | ~q((↑$na : ENNReal) * ((↑$nb : ENNReal) / (↑$nc : ENNReal)) = $d) => return true
-  | ~q(((↑$na : ENNReal) / (↑$nb : ENNReal)) * (↑$nc : ENNReal) = $d) => return true
-  | ~q(($a : ENNReal) = (↑$nb : ENNReal) * ((↑$nc : ENNReal) / (↑$nd : ENNReal))) => return true
-  | ~q(($a : ENNReal) = ((↑$nb : ENNReal) / (↑$nc : ENNReal)) * (↑$nd : ENNReal)) => return true
-
-  -- Nested patterns
-  | ~q(($a * $b : ENNReal) / $c = $d) => return true
-  | ~q(($a : ENNReal) / ($b * $c) = $d) => return true
-  | ~q(($a : ENNReal) = ($b * $c) / $d) => return true
-  | ~q(($a : ENNReal) = $b / ($c * $d)) => return true
-
-  | _ => return false
-
 syntax "ennreal_mul_div_assoc" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
@@ -116,8 +40,6 @@ elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
     ] then return
 
     throwError "ennreal_mul_div_assoc could not solve the goal"
-
-example : (↑2 : ENNReal) * ((↑3 : ENNReal) / (↑5 : ENNReal)) = (↑2 * ↑3 : ENNReal) / (↑5 : ENNReal) := by ennreal_mul_div_assoc
 
 
 syntax "ennreal_inv_transform" : tactic
@@ -174,8 +96,6 @@ elab_rules : tactic | `(tactic| ennreal_inv_transform) => do
 
     evalTactic (← `(tactic| all_goals assumption))
 
-example {a b : ℕ} (_ha : a ≠ 0) : (↑a : ENNReal)⁻¹ * (↑b : ENNReal) = (↑b : ENNReal) / (↑a : ENNReal) := by ennreal_inv_transform
-
 
 /-- Convert an ENNReal equation to a Real equation when both sides are not infinity -/
 lemma ennreal_eq_via_toReal {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
@@ -227,7 +147,5 @@ elab_rules : tactic | `(tactic| ennreal_fraction_add) => do
 
 
     throwError "ennreal_fraction_add could not solve the goal"
-
-example: (@OfNat.ofNat ℝ≥0∞ 18 instOfNatAtLeastTwo)⁻¹ + 9⁻¹ = ( 6⁻¹ : ENNReal) := by ennreal_fraction_add
 
 end ENNRealArith

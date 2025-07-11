@@ -3,22 +3,7 @@ import ENNRealArith
 
 open ENNReal
 
-section BasicSimpTests
 
-example {a : ℕ} : (↑a : ENNReal) + 0 = ↑a := by ennreal_basic_simp
-example {a : ℕ} : (↑a : ENNReal) * 1 = ↑a := by ennreal_basic_simp
-example {a : ℕ} : (↑a : ENNReal) / 1 = ↑a := by ennreal_basic_simp
-
-example {a : ℕ} : (↑a : ENNReal) * 0 = 0 := by ennreal_basic_simp
-example {a : ℕ} : (0 : ENNReal) / ↑a = 0 := by ennreal_basic_simp
-
-example : (↑2 : ENNReal) + ↑3 = ↑5 := by ennreal_basic_simp
-example : (↑2 : ENNReal) * ↑3 = ↑6 := by ennreal_basic_simp
-
-example {a b : ℕ} : (↑a : ENNReal) + (↑b : ENNReal) = ↑(a + b : ℕ) := by ennreal_basic_simp
-example {a b : ℕ} : (↑a : ENNReal) * (↑b : ENNReal) = ↑(a * b : ℕ) := by ennreal_basic_simp
-
-end BasicSimpTests
 
 section DivSelfTests
 

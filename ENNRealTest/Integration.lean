@@ -35,3 +35,17 @@ example (p q : Prop) [Decidable p] [Decidable q] :
     ((1 : ENNReal) + (1 + (2 + (2 + (2 + (1 + (1 + (2 + (2 + (2 + (1 + 1))))))))))) / 18) =
   (if p then 0 else if q then 1/18 else 1) := by
   split_ifs <;> ennreal_arith
+
+
+example {a : ℕ} : (↑a : ENNReal) + 0 = ↑a := by ennreal_arith
+example {a : ℕ} : (↑a : ENNReal) * 1 = ↑a := by ennreal_arith
+example {a : ℕ} : (↑a : ENNReal) / 1 = ↑a := by ennreal_arith
+
+example {a : ℕ} : (↑a : ENNReal) * 0 = 0 := by ennreal_arith
+example {a : ℕ} : (0 : ENNReal) / ↑a = 0 := by ennreal_arith
+
+example : (↑2 : ENNReal) + ↑3 = ↑5 := by ennreal_arith
+example : (↑2 : ENNReal) * ↑3 = ↑6 := by ennreal_arith
+
+example {a b : ℕ} : (↑a : ENNReal) + (↑b : ENNReal) = ↑(a + b : ℕ) := by ennreal_arith
+example {a b : ℕ} : (↑a : ENNReal) * (↑b : ENNReal) = ↑(a * b : ℕ) := by ennreal_arith

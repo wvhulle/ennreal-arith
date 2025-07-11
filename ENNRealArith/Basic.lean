@@ -9,15 +9,15 @@ namespace ENNRealArith
 syntax "ennreal_arith" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_arith) => do
-  let goal ← getMainGoal
-  goal.withContext do
-    let fallbackTactics := [
-      ← `(tactic| ennreal_mul_cancel),
-      ← `(tactic| ennreal_fraction_add),
-    ]
+  let tactics := [
+    ← `(tactic| ennreal_mul_cancel),
+    ← `(tactic| ennreal_fraction_add)
+  ]
 
-    for tac in fallbackTactics do
-      if ← tryTactic tac then return
+  for tac in tactics do
+    if ← tryTactic tac then return
+
+  throwError "ennreal_arith could not solve the goal"
 
 
 
