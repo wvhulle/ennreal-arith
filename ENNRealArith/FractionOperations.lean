@@ -203,10 +203,8 @@ elab_rules : tactic | `(tactic| ennreal_fraction_add) => do
   goal.withContext do
     let target ← getMainTarget
 
-    -- First try: Basic normalization
     if ← tryTactic (← `(tactic| norm_num)) then return
 
-    -- Check for concrete division goals
     if ← isConcreteDivisionGoal target then
       if ← tryTactic (← `(tactic| ennreal_div_self)) then return
 
@@ -215,40 +213,29 @@ elab_rules : tactic | `(tactic| ennreal_fraction_add) => do
     match targetQ with
     | ~q(($a : ENNReal) / $den + ($b : ENNReal) / $den2 = ($c : ENNReal) / $den3) =>
       if (← isDefEq den den2) && (← isDefEq den den3) then
-      -- Common denominator addition
       if ← tryTactic (← `(tactic| rw [← ENNReal.add_div])) then return
       if ← tryTactic (← `(tactic| norm_num)) then return
 
     | ~q(($a : ENNReal) + $b = $c) =>
-      -- Basic addition
       if ← tryTactic (← `(tactic| simp only [add_zero, zero_add])) then return
       if ← tryTactic (← `(tactic| norm_num)) then return
 
     | _ => pure ()
 
-    -- General transformation sequence (preserving original logic)
     let _ ← tryTactic (← `(tactic| simp only [add_assoc, add_zero, zero_add, inv_eq_one_div]))
 
     repeatWhileProgress (← `(tactic| rw [← ENNReal.add_div]))
 
     let _ ← tryTactic (← `(tactic| ennreal_inv_transform))
 
-    if ← tryTactic (← `(tactic| ennreal_div_self)) then return
-
     if (← getUnsolvedGoals).isEmpty then return
 
-    -- Advanced fallbacks for complex cases
     if ← tryTacticSequence [
       ← `(tactic| rw [ENNRealArith.ennreal_eq_via_toReal (by norm_num) (by norm_num)]),
       ← `(tactic| rw [ENNReal.toReal_add, ENNReal.toReal_div, ENNReal.toReal_div, ENNReal.toReal_div]),
       ← `(tactic| all_goals norm_num)
     ] then return
 
-    if ← tryTacticSequence [
-      ← `(tactic| simp only [inv_eq_one_div]),
-      ← `(tactic| rw [← ENNReal.add_div]),
-      ← `(tactic| norm_num)
-    ] then return
 
     throwError "ennreal_fraction_add could not solve the goal"
 
