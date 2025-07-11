@@ -15,19 +15,13 @@ Helper function to try various ways of proving a natural number is nonzero.
 Used by multiple tactics that need to establish nonzero conditions.
 -/
 def tryNonzeroProof : TacticM Unit := do
-  try
-    evalTactic (← `(tactic| assumption))
-  catch _ =>
-    try
-      evalTactic (← `(tactic| apply ne_of_gt; assumption))
-    catch _ =>
-      try
-        evalTactic (← `(tactic| norm_num))
-      catch _ =>
-        try
-          evalTactic (← `(tactic| exact Nat.succ_ne_zero _))
-        catch _ =>
-          throwError "Could not prove nonzero condition"
+  evalTactic (← `(tactic| 
+    first 
+    | assumption
+    | apply ne_of_gt; assumption  
+    | norm_num
+    | exact Nat.succ_ne_zero _
+    | fail "Could not prove nonzero condition"))
 
 def tryTacticSequence (tactics : List (TSyntax `tactic)) : TacticM Bool := do
   try

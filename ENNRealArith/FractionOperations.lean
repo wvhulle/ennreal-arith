@@ -19,7 +19,6 @@ namespace ENNRealArith
 elab "ennreal_mul_div_assoc": tactic  => do
   let goal ← getMainGoal
   goal.withContext do
-    -- Try the main tactics that should handle most cases
     let mainTactics := [
       ← `(tactic| simp only [mul_div, ENNReal.mul_comm_div, one_mul, mul_one, Nat.cast_mul]),
       ← `(tactic| norm_num),

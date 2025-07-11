@@ -76,8 +76,6 @@ elab "ennreal_mul_cancel" : tactic => do
 
     if ← attemptCancellation then return
 
-    throwError "ennreal_mul_cancel could not solve the goal"
-
 example {a b c : ℕ} (hc : c ≠ 0) : (↑(a * c) : ENNReal) / (↑(b * c)) = (↑a) / (↑b) := by ennreal_mul_cancel
 
 end ENNRealArith
