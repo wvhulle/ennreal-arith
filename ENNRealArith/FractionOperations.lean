@@ -208,15 +208,14 @@ elab_rules : tactic | `(tactic| ennreal_fraction_add) => do
     if ← isConcreteDivisionGoal target then
       if ← tryTactic (← `(tactic| ennreal_div_self)) then return
 
-    -- Use QQ pattern matching for specific common patterns first
     have targetQ : Q(Prop) := target
     match targetQ with
-    | ~q(($a : ENNReal) / $den + ($b : ENNReal) / $den2 = ($c : ENNReal) / $den3) =>
-      if (← isDefEq den den2) && (← isDefEq den den3) then
+    | ~q(($num1 : ENNReal) / $denom + ($num2 : ENNReal) / $denom2 = ($res : ENNReal) / $denom3) =>
+      if (← isDefEq denom denom2) && (← isDefEq denom denom3) then
       if ← tryTactic (← `(tactic| rw [← ENNReal.add_div])) then return
       if ← tryTactic (← `(tactic| norm_num)) then return
 
-    | ~q(($a : ENNReal) + $b = $c) =>
+    | ~q(($lhs : ENNReal) + $rhs = $sum) =>
       if ← tryTactic (← `(tactic| simp only [add_zero, zero_add])) then return
       if ← tryTactic (← `(tactic| norm_num)) then return
 
