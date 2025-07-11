@@ -6,42 +6,6 @@ open ENNReal Qq
 
 namespace ENNRealArith
 
-/--
-Helper function to analyze multiplication cancellation patterns using QQ pattern matching.
-Detects patterns like `(↑(a * c) : ENNReal) / (↑(b * c)) = (↑a) / (↑b)`.
--/
-def analyzeMultiplicationCancellation (target : Expr) : MetaM (Option (Expr × Expr × Expr)) := do
-
-  if !target.isAppOfArity ``Eq 3 then
-    return none
-
-  let lhs := target.getArg! 1
-  let rhs := target.getArg! 2
-
-  if lhs.isAppOfArity ``HDiv.hDiv 6 && rhs.isAppOfArity ``HDiv.hDiv 6 then
-    let lhsNum := lhs.getArg! 4
-    let lhsDen := lhs.getArg! 5
-    let rhsNum := rhs.getArg! 4
-    let rhsDen := rhs.getArg! 5
-
-    if lhsNum.isAppOfArity ``Coe.coe 4 && lhsDen.isAppOfArity ``Coe.coe 4 &&
-       rhsNum.isAppOfArity ``Coe.coe 4 && rhsDen.isAppOfArity ``Coe.coe 4 then
-
-      let lhsNumNat := lhsNum.getArg! 3
-      let lhsDenNat := lhsDen.getArg! 3
-      let rhsNumNat := rhsNum.getArg! 3
-      let rhsDenNat := rhsDen.getArg! 3
-
-      if lhsNumNat.isAppOfArity ``HMul.hMul 6 && lhsDenNat.isAppOfArity ``HMul.hMul 6 then
-        let lhsNumA := lhsNumNat.getArg! 4
-        let lhsNumC := lhsNumNat.getArg! 5
-        let lhsDenB := lhsDenNat.getArg! 4
-        let lhsDenC := lhsDenNat.getArg! 5
-
-        if lhsNumA == rhsNumNat && lhsDenB == rhsDenNat && lhsNumC == lhsDenC then
-          return some (lhsNumA, lhsDenB, lhsNumC)
-
-  return none
 
 /--
 Analyzes patterns for basic arithmetic operations using QQ pattern matching.
@@ -56,65 +20,65 @@ def analyzeBasicArithmeticPattern (target : Expr) : MetaM (Option (Bool × Bool 
   -- Use QQ pattern matching on the target
   have targetQ : Q(Prop) := target
   match targetQ with
-  
+
   -- Addition patterns
   | ~q(($a : ENNReal) + $b = $c) => return some (true, false, false, false)
   | ~q(($a : ENNReal) = $b + $c) => return some (true, false, false, false)
   | ~q((↑$na : ENNReal) + (↑$nb : ENNReal) = $c) => return some (true, false, false, false)
   | ~q(($a : ENNReal) = (↑$nb : ENNReal) + (↑$nc : ENNReal)) => return some (true, false, false, false)
-  
+
   -- Multiplication patterns
   | ~q(($a : ENNReal) * $b = $c) => return some (false, true, false, false)
   | ~q(($a : ENNReal) = $b * $c) => return some (false, true, false, false)
   | ~q((↑$na : ENNReal) * (↑$nb : ENNReal) = $c) => return some (false, true, false, false)
   | ~q(($a : ENNReal) = (↑$nb : ENNReal) * (↑$nc : ENNReal)) => return some (false, true, false, false)
-  
+
   -- Division patterns
   | ~q(($a : ENNReal) / $b = $c) => return some (false, false, true, false)
   | ~q(($a : ENNReal) = $b / $c) => return some (false, false, true, false)
   | ~q((↑$na : ENNReal) / (↑$nb : ENNReal) = $c) => return some (false, false, true, false)
   | ~q(($a : ENNReal) = (↑$nb : ENNReal) / (↑$nc : ENNReal)) => return some (false, false, true, false)
-  
+
   -- Inverse patterns
   | ~q((($a : ENNReal)⁻¹) = $b) => return some (false, false, false, true)
   | ~q(($a : ENNReal) = (($b)⁻¹)) => return some (false, false, false, true)
-  
+
   -- Combined patterns - addition with multiplication
   | ~q(($a : ENNReal) + $b * $c = $d) => return some (true, true, false, false)
   | ~q(($a : ENNReal) * $b + $c = $d) => return some (true, true, false, false)
   | ~q(($a : ENNReal) = $b + $c * $d) => return some (true, true, false, false)
   | ~q(($a : ENNReal) = $b * $c + $d) => return some (true, true, false, false)
-  
+
   -- Combined patterns - addition with division
   | ~q(($a : ENNReal) + $b / $c = $d) => return some (true, false, true, false)
   | ~q(($a : ENNReal) / $b + $c = $d) => return some (true, false, true, false)
   | ~q(($a : ENNReal) = $b + $c / $d) => return some (true, false, true, false)
   | ~q(($a : ENNReal) = $b / $c + $d) => return some (true, false, true, false)
-  
+
   -- Combined patterns - multiplication with division
   | ~q(($a : ENNReal) * $b / $c = $d) => return some (false, true, true, false)
   | ~q(($a : ENNReal) / $b * $c = $d) => return some (false, true, true, false)
   | ~q(($a : ENNReal) = $b * $c / $d) => return some (false, true, true, false)
   | ~q(($a : ENNReal) = $b / $c * $d) => return some (false, true, true, false)
-  
+
   -- Combined patterns - addition with inverse
   | ~q(($a : ENNReal) + (($b)⁻¹) = $c) => return some (true, false, false, true)
   | ~q((($a : ENNReal)⁻¹) + $b = $c) => return some (true, false, false, true)
   | ~q(($a : ENNReal) = $b + (($c)⁻¹)) => return some (true, false, false, true)
   | ~q(($a : ENNReal) = (($b)⁻¹) + $c) => return some (true, false, false, true)
-  
+
   -- Combined patterns - multiplication with inverse
   | ~q(($a : ENNReal) * (($b)⁻¹) = $c) => return some (false, true, false, true)
   | ~q((($a : ENNReal)⁻¹) * $b = $c) => return some (false, true, false, true)
   | ~q(($a : ENNReal) = $b * (($c)⁻¹)) => return some (false, true, false, true)
   | ~q(($a : ENNReal) = (($b)⁻¹) * $c) => return some (false, true, false, true)
-  
+
   -- Combined patterns - division with inverse
   | ~q(($a : ENNReal) / (($b)⁻¹) = $c) => return some (false, false, true, true)
   | ~q((($a : ENNReal)⁻¹) / $b = $c) => return some (false, false, true, true)
   | ~q(($a : ENNReal) = $b / (($c)⁻¹)) => return some (false, false, true, true)
   | ~q(($a : ENNReal) = (($b)⁻¹) / $c) => return some (false, false, true, true)
-  
+
   -- Complex combined patterns
   | ~q(($a : ENNReal) + $b * $c / $d = $e) => return some (true, true, true, false)
   | ~q(($a : ENNReal) * $b + $c / $d = $e) => return some (true, true, true, false)
@@ -122,11 +86,11 @@ def analyzeBasicArithmeticPattern (target : Expr) : MetaM (Option (Bool × Bool 
   | ~q(($a : ENNReal) = $b + $c * $d / $e) => return some (true, true, true, false)
   | ~q(($a : ENNReal) = $b * $c + $d / $e) => return some (true, true, true, false)
   | ~q(($a : ENNReal) = $b / $c + $d * $e) => return some (true, true, true, false)
-  
+
   -- Simple equality (no arithmetic operations)
   | ~q(($a : ENNReal) = $b) => return some (false, false, false, false)
   | ~q((↑$na : ENNReal) = (↑$nb : ENNReal)) => return some (false, false, false, false)
-  
+
   | _ => return none
 
 /--
@@ -231,54 +195,86 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
       if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
 
-    let mulPattern? ← analyzeMultiplicationCancellation target
-    match mulPattern? with
-    | some _ =>
+    -- Direct pattern matching without intermediate Option
+    if target.isAppOfArity ``Eq 3 then
+      let lhs := target.getArg! 1
+      let rhs := target.getArg! 2
+
+      if lhs.isAppOfArity ``HDiv.hDiv 6 && rhs.isAppOfArity ``HDiv.hDiv 6 then
+        let lhsNum := lhs.getArg! 4
+        let lhsDen := lhs.getArg! 5
+        let rhsNum := rhs.getArg! 4
+        let rhsDen := rhs.getArg! 5
+
+        if lhsNum.isAppOfArity ``Coe.coe 4 && lhsDen.isAppOfArity ``Coe.coe 4 &&
+           rhsNum.isAppOfArity ``Coe.coe 4 && rhsDen.isAppOfArity ``Coe.coe 4 then
+
+          let lhsNumNat := lhsNum.getArg! 3
+          let lhsDenNat := lhsDen.getArg! 3
+          let rhsNumNat := rhsNum.getArg! 3
+          let rhsDenNat := rhsDen.getArg! 3
+
+          if lhsNumNat.isAppOfArity ``HMul.hMul 6 && lhsDenNat.isAppOfArity ``HMul.hMul 6 then
+            let lhsNumA := lhsNumNat.getArg! 4
+            let lhsNumC := lhsNumNat.getArg! 5
+            let lhsDenB := lhsDenNat.getArg! 4
+            let lhsDenC := lhsDenNat.getArg! 5
+
+            if lhsNumA == rhsNumNat && lhsDenB == rhsDenNat && lhsNumC == lhsDenC then
+              -- Found multiplication cancellation pattern (a, b, c)
+              -- First try: Simple norm_num for concrete arithmetic
+              try
+                evalTactic (← `(tactic| norm_num))
+                if (← getUnsolvedGoals).isEmpty then return
+              catch _ => pure ()
+
+              -- Second try: Apply cancellation rules
+              try
+                evalTactic (← `(tactic| rw [Nat.cast_mul, Nat.cast_mul]))
+                evalTactic (← `(tactic| apply ENNReal.mul_div_mul_right))
+                evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
+                evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
+                tryNonzeroProof
+                evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
+                if (← getUnsolvedGoals).isEmpty then return
+              catch _ => pure ()
+
+              -- Third try: Left cancellation
+              try
+                evalTactic (← `(tactic| rw [Nat.cast_mul, Nat.cast_mul]))
+                evalTactic (← `(tactic| apply ENNReal.mul_div_mul_left))
+                evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
+                evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
+                tryNonzeroProof
+                evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
+                if (← getUnsolvedGoals).isEmpty then return
+              catch _ => pure ()
+
+    -- Fallback: Try generic cancellation approaches regardless of pattern detection
+    let attemptCancellation : TacticM Bool := do
       try
         evalTactic (← `(tactic| rw [Nat.cast_mul, Nat.cast_mul]))
+      catch _ => pure ()
+
+      try
         evalTactic (← `(tactic| apply ENNReal.mul_div_mul_right))
         evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
         evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
         tryNonzeroProof
         evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-        if (← getUnsolvedGoals).isEmpty then return
+        return (← getUnsolvedGoals).isEmpty
       catch _ => pure ()
 
       try
-        evalTactic (← `(tactic| rw [Nat.cast_mul, Nat.cast_mul]))
         evalTactic (← `(tactic| apply ENNReal.mul_div_mul_left))
         evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
         evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
         tryNonzeroProof
         evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-        if (← getUnsolvedGoals).isEmpty then return
-      catch _ => pure ()
+        return (← getUnsolvedGoals).isEmpty
+      catch _ => return false
 
-    | none =>
-      let attemptCancellation : TacticM Bool := do
-        try
-          evalTactic (← `(tactic| rw [Nat.cast_mul, Nat.cast_mul]))
-        catch _ => pure ()
-
-        try
-          evalTactic (← `(tactic| apply ENNReal.mul_div_mul_right))
-          evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-          evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-          tryNonzeroProof
-          evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-          return (← getUnsolvedGoals).isEmpty
-        catch _ => pure ()
-
-        try
-          evalTactic (← `(tactic| apply ENNReal.mul_div_mul_left))
-          evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-          evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-          tryNonzeroProof
-          evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-          return (← getUnsolvedGoals).isEmpty
-        catch _ => return false
-
-      if ← attemptCancellation then return
+    if ← attemptCancellation then return
 
     throwError "ennreal_mul_cancel could not solve the goal"
 
