@@ -7,12 +7,11 @@ open Lean Meta Elab Tactic
 namespace ENNRealArith
 
 
-elab "ennreal_arith" : tactic  => do
-  let tactics := [
-    ← `(tactic| ennreal_mul_cancel),
-    ← `(tactic| ennreal_fraction_add)
-  ]
-  for tac in tactics do
-    if ← tryTactic tac then return
+elab "ennreal_arith" : tactic => do
+  evalTactic (← `(tactic|
+    first
+    | (ennreal_mul_cancel; done)
+    | (ennreal_fraction_add; done)
+    ))
 
 end ENNRealArith
