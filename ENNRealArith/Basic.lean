@@ -17,62 +17,46 @@ elab_rules : tactic | `(tactic| ennreal_arith) => do
     let hasMultInDiv ← analyzeMultiplicationInDivision target
 
     -- Handle case where no basic pattern is detected
-    let some (hasAddition, hasMultiplication, hasDivision, _) := basicPattern? 
+    let some (_, _, hasDivision, _) := basicPattern?
       | do evalTactic (← `(tactic| first
              | ennreal_basic_simp
              | ennreal_div_self
              | fail "ennreal_arith expects an equality goal"))
 
-    -- Extract inverse information if available
+    -- Extract pattern information
     let hasInverse := invPattern?.map (·.1) |>.getD false
-
-    -- Common pattern flags
-    let isSimpleArithmetic := (hasAddition || hasMultiplication) && !hasDivision && !hasInverse
     let isConcrete ← isConcreteDivisionGoal target
 
-    -- Determine which tactics to use based on patterns
-    let tactics : TSyntax `tactic ←
+    -- Determine primary tactic based on pattern priority
+    let primaryTactic : TSyntax `tactic ←
       if isConcrete then
-        `(tactic| first
-          | ennreal_fraction_add
-          | ennreal_div_self
-          | ennreal_basic_simp
-          | fail "ennreal_arith could not solve concrete division")
+        `(tactic| ennreal_fraction_add)
       else if hasInverse then
-        `(tactic| first
-          | ennreal_inv_transform
-          | ennreal_fraction_add
-          | ennreal_basic_simp
-          | ennreal_div_self
-          | fail "ennreal_arith could not solve inverse pattern")
+        `(tactic| ennreal_inv_transform)
       else if hasMultInDiv then
-        `(tactic| first
-          | ennreal_mul_div_assoc
-          | ennreal_mul_cancel
-          | ennreal_basic_simp
-          | fail "ennreal_arith could not solve multiplication-division pattern")
+        `(tactic| ennreal_mul_div_assoc)
       else if hasDivision then
-        `(tactic| first
-          | ennreal_div_self
-          | ennreal_mul_cancel
-          | ennreal_fraction_add
-          | ennreal_basic_simp
-          | fail "ennreal_arith could not solve division pattern")
-      else if isSimpleArithmetic then
-        `(tactic| first
-          | ennreal_basic_simp
-          | fail "ennreal_arith could not solve simple arithmetic")
+        `(tactic| ennreal_div_self)
       else
-        `(tactic| first
-          | ennreal_basic_simp
-          | ennreal_div_self
-          | ennreal_mul_cancel
-          | ennreal_mul_div_assoc
-          | ennreal_inv_transform
-          | ennreal_fraction_add
-          | fail "ennreal_arith could not solve the goal")
+        `(tactic| ennreal_basic_simp)
 
-    evalTactic tactics
+    -- Execute primary tactic first, then fallbacks
+    try
+      evalTactic primaryTactic
+      if (← getUnsolvedGoals).isEmpty then return
+    catch _ => pure ()
+
+    -- Build comprehensive fallback list (order matters for efficiency)
+    let fallbackTactics ← `(tactic| first
+      | ennreal_basic_simp
+      | ennreal_div_self
+      | ennreal_mul_cancel
+      | ennreal_fraction_add
+      | ennreal_mul_div_assoc
+      | ennreal_inv_transform
+      | fail "ennreal_arith could not solve the goal")
+
+    evalTactic fallbackTactics
 
 
 end ENNRealArith
