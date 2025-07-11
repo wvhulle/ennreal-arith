@@ -12,32 +12,19 @@ elab_rules : tactic | `(tactic| ennreal_arith) => do
   goal.withContext do
     let target ← getMainTarget
 
-    let basicPattern? ← analyzeBasicArithmeticPattern target
 
-    let some (_, _, _, _) := basicPattern?
-      | do evalTactic (← `(tactic| first
-             | ennreal_basic_simp
-             | ennreal_div_self
-             | fail "ennreal_arith expects an equality goal"))
+    if ← isConcreteDivisionGoal target then
+      if ← tryTactic (← `(tactic| ennreal_fraction_add)) then return
 
-    let isConcrete ← isConcreteDivisionGoal target
+    let fallbackTactics := [
+      ← `(tactic| ennreal_mul_cancel),
+      ← `(tactic| ennreal_fraction_add),
+    ]
 
-    let primaryTactic : TSyntax `tactic ←
-      if isConcrete then
-        `(tactic| ennreal_fraction_add)
-      else
-        `(tactic| ennreal_basic_simp)
+    for tac in fallbackTactics do
+      if ← tryTactic tac then return
 
-    try
-      evalTactic primaryTactic
-      if (← getUnsolvedGoals).isEmpty then return
-    catch _ => pure ()
-
-    let fallbackTactics ← `(tactic| first
-      | ennreal_mul_cancel
-      | ennreal_inv_transform)
-
-    evalTactic fallbackTactics
+    throwError "ennreal_arith could not solve the goal"
 
 
 end ENNRealArith
