@@ -13,6 +13,17 @@ name = "ennreal-arith"
 rev = "main" # or a specific commit
 ```
 
+Or if you use `leanfile.lean`, 
+
+```lean
+import Lake
+open Lake DSL 
+
+require «ennreal-arith» from git
+  "https://github.com/wvhulle/ennreal-arith.git" @ "[COMMIT_HASH]"
+```
+
+
 ## Usage
 
 Import in your Lean files:

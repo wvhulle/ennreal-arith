@@ -84,23 +84,19 @@ elab "ennreal_mul_cancel" : tactic => do
         evalTactic (← `(tactic| rw [Nat.cast_mul, Nat.cast_mul]))
       catch _ => pure ()
 
-      try
-        evalTactic (← `(tactic| apply ENNReal.mul_div_mul_right))
-        evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-        evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-        tryNonzeroProof
-        evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-        return (← getUnsolvedGoals).isEmpty
-      catch _ => pure ()
+      let tryMulDiv (tac : TSyntax `tactic) : TacticM Bool := do
+        try
+          evalTactic tac
+          evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
+          evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
+          tryNonzeroProof
+          evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
+          return (← getUnsolvedGoals).isEmpty
+        catch _ => return false
 
-      try
-        evalTactic (← `(tactic| apply ENNReal.mul_div_mul_left))
-        evalTactic (← `(tactic| apply ENNReal.coe_ne_zero.mpr))
-        evalTactic (← `(tactic| apply Nat.cast_ne_zero.mpr))
-        tryNonzeroProof
-        evalTactic (← `(tactic| exact ENNReal.coe_ne_top))
-        return (← getUnsolvedGoals).isEmpty
-      catch _ => return false
+      if ← tryMulDiv (← `(tactic| apply ENNReal.mul_div_mul_right)) then return true
+      if ← tryMulDiv (← `(tactic| apply ENNReal.mul_div_mul_left)) then return true
+      return false
 
     if ← attemptCancellation then return
 

@@ -29,7 +29,6 @@ elab "ennreal_mul_div_assoc": tactic  => do
     for tac in mainTactics do
       if ← tryTactic tac then return
 
-    -- Fallback for division self cases
     if ← tryTacticSequence [
       ← `(tactic| apply ENNReal.div_self),
       ← `(tactic| apply Nat.cast_ne_zero.mpr),
