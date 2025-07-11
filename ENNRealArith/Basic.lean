@@ -1,8 +1,10 @@
+import ENNRealArith.Common
 import ENNRealArith.FractionOperations
 import Qq
 
-open Lean ENNRealArith
+open Lean Meta Elab Tactic
 
+namespace ENNRealArith
 
 elab "ennreal_arith" : tactic  => do
   let tactics := [
@@ -11,3 +13,5 @@ elab "ennreal_arith" : tactic  => do
   ]
   for tac in tactics do
     if ← tryTactic tac then return
+
+end ENNRealArith

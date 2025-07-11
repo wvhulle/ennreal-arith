@@ -1,11 +1,9 @@
 import ENNRealArith.Common
 import Qq
 
-open Lean Meta Elab Tactic
-open ENNReal Qq
+open Lean Meta Elab Tactic ENNReal Qq
 
 namespace ENNRealArith
-
 
 /--
 Tactic for proving ENNReal division by self equals 1.
