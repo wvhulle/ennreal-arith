@@ -221,12 +221,7 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
             let lhsDenC := lhsDenNat.getArg! 5
 
             if lhsNumA == rhsNumNat && lhsDenB == rhsDenNat && lhsNumC == lhsDenC then
-              -- Found multiplication cancellation pattern (a, b, c)
-              -- First try: Simple norm_num for concrete arithmetic
-              try
-                evalTactic (← `(tactic| norm_num))
-                if (← getUnsolvedGoals).isEmpty then return
-              catch _ => pure ()
+
 
               -- Second try: Apply cancellation rules
               try
