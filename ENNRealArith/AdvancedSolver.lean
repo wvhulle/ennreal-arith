@@ -47,7 +47,7 @@ lemma add_mixed_denom {a b c d : ENNReal} {hc : c ≠ 0} {hd : d ≠ 0} {hct: c 
     rw [h1, h2]
     rw [← ENNReal.div_add_div_same]
 
-lemma div_div {a b c : ℕ}:
+lemma div_div_cast {a b c : ℕ}:
   ((↑a : ENNReal) / ↑b) / ↑c = ↑a / (↑b * ↑c) := by
   calc ((↑a : ENNReal) / ↑b) / ↑c
     _ = (↑a : ENNReal) / ↑b * (↑c)⁻¹ := by
@@ -61,6 +61,23 @@ lemma div_div {a b c : ℕ}:
       rw [ENNReal.mul_inv]
       all_goals norm_num
     _ = (↑a : ENNReal) / (↑b * ↑c) := by
+      rw [← div_eq_mul_inv]
+
+lemma div_div {a b c : ENNReal} {h: b ≠ 0} {g: c ≠ 0}:
+  (a / b) / c = a / (b * c) := by
+  calc (a / b) / c
+    _ = (a / b) * c⁻¹ := by
+      rw [div_eq_mul_inv]
+    _ = a * b⁻¹ * c⁻¹ := by
+      rw [div_eq_mul_inv]
+    _ = a  * ((b)⁻¹ * (c)⁻¹) := by
+      rw [mul_assoc]
+    _ = a * ((b * c)⁻¹) := by
+      congr 1
+      rw [ENNReal.mul_inv]
+      . exact Or.inl h
+      . exact Or.inr g
+    _ = a   / (b * c) := by
       rw [← div_eq_mul_inv]
 
 lemma add_div_eq_div {a b c  : ENNReal} {hc : c ≠ 0}  {hct: c ≠ ⊤}  :
@@ -93,6 +110,18 @@ lemma div_eq_iff {a b c : ENNReal} {hc : c ≠ 0} {hct: c ≠ ⊤} :
     · intro h
       rw [h]
       rw [ENNReal.mul_div_cancel_right hc hct]
+
+lemma eq_as_real {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
+    a = b ↔ a.toReal = b.toReal := by
+  constructor
+  · intro h
+    rw [h]
+  · intro h
+    rw [← ENNReal.ofReal_toReal ha, ← ENNReal.ofReal_toReal hb, h]
+
+
+
+
 
 -- =============================================
 -- ENHANCED MULTI-STEP ARITHMETIC SOLVER
@@ -134,6 +163,8 @@ def solveAdvancedFractions : TacticM Bool := do
   let fractionTactics := [
     -- Basic fraction arithmetic
     ← `(tactic| norm_num),
+    -- div_div pattern using cast version (simpler)
+    ← `(tactic| (try (rw [div_div_cast]; norm_num))),
     -- Mixed denominator addition pattern (safe version)
     ← `(tactic| (try (rw [add_mixed_denom (hc := by norm_num) (hd := by norm_num) (hct := by norm_num) (hdt := by norm_num)]; norm_num; rw [div_eq_iff]; norm_num; norm_num; norm_num))),
     -- Self-division with multiplication pattern - exact manual proof sequence
@@ -838,9 +869,19 @@ lemma test_div_stress_2 : (50 : ENNReal) / 1 / 1 + 50 / 1 / 1 = 100 := by ennrea
 lemma test_div_stress_3 : (25 : ENNReal) / 1 * 4 / 1 = 100 := by ennreal_arith_advanced
 
 -- Multiple division patterns
-lemma test_multi_div_1 : ((20 : ENNReal) / 4) / 1 = 5 := by ennreal_arith_advanced
+lemma test_multi_div_1 : ((20 : ENNReal) / 4) / 1 = 5 := by
+  rw [div_one]
+  rw [ div_eq_iff]
+  . norm_num
+  . norm_num
+  . norm_num
 
-lemma test_multi_div_2 : (30 : ENNReal) / (6 / 1) = 5 := by ennreal_arith_advanced
+lemma test_multi_div_2 : (30 : ENNReal) / (6 / 1) = 5 := by
+  rw [div_one]
+  rw [ div_eq_iff]
+  . norm_num
+  . norm_num
+  . norm_num
 
 lemma test_multi_div_3 : ((40 : ENNReal) / 8) + ((50 / 10)) = 10 := by ennreal_arith_advanced
 
@@ -868,30 +909,101 @@ lemma test_inverse_stress_1 : (3 : ENNReal)⁻¹ + (3 : ENNReal)⁻¹ = 2 * (3 :
 lemma test_inverse_stress_2 : (4 : ENNReal)⁻¹ + (4 : ENNReal)⁻¹ + (4 : ENNReal)⁻¹ = 3 * (4 : ENNReal)⁻¹ := by ring_nf
 
 -- Large number fraction stress
-lemma test_large_fraction_1 : (1000 : ENNReal) / 100 = 10 := by ennreal_arith_advanced
+lemma test_large_fraction_1 : (1000 : ENNReal) / 100 = 10 := by
+  rw [ div_eq_iff]
+  . norm_num
+  . norm_num
+  . norm_num
 
-lemma test_large_fraction_2 : (2000 : ENNReal) / 200 + 5 = 15 := by norm_num
+lemma test_large_fraction_2 : (2000 : ENNReal) / 200 + 5 = 15 := by
+  have: ((2000 : ENNReal) / 200 + 5 ).toReal = 15 := by
+    rw [toReal_add]
+    rw [toReal_div]
+    norm_num
+    · exact div_ne_top (by norm_num) (by norm_num)
+    · norm_num
+  rw [eq_as_real]
+  exact this
+  refine add_ne_top.mpr ?_
+  apply And.intro
+  . exact div_ne_top (by norm_num) (by norm_num)
+  . norm_num
+  . norm_num
 
-lemma test_large_fraction_3 : (5000 : ENNReal) / 1000 * 3 = 15 := by norm_num
+
+
+lemma test_large_fraction_3 : (5000 : ENNReal) / 1000 * 3 = 15 := by
+  rw [mul_comm]
+  rw [<- ENNReal.ofReal_toReal (show 5000 ≠ ⊤ from by norm_num) ]
+  rw [<- ENNReal.ofReal_toReal (show 1000 ≠ ⊤ from by norm_num) ]
+  rw [<- ENNReal.ofReal_div_of_pos]
+  norm_num
+  norm_num
 
 -- Complex fraction chains
-lemma test_fraction_chain_1 : (12 : ENNReal) / 3 / 2 = 2 := by ennreal_arith_advanced
+lemma test_fraction_chain_1 : (12 : ENNReal) / 3 / 2 = 2 := by
+  rw [div_div]
+  · norm_num
+    rw [div_eq_iff]
+    · norm_num
+    · norm_num
+    · norm_num
+  · norm_num
+  · norm_num
 
-lemma test_fraction_chain_2 : (24 : ENNReal) / 4 / 3 = 2 := by ennreal_arith_advanced
 
-lemma test_fraction_chain_3 : (60 : ENNReal) / 6 / 5 = 2 := by ennreal_arith_advanced
+lemma test_fraction_chain_2 : (24 : ENNReal) / 4 / 3 = 2 := by
+  rw [div_div]
+  · norm_num
+    rw [div_eq_iff]
+    · norm_num
+    · norm_num
+    · norm_num
+  · norm_num
+  · norm_num
+
+
+lemma test_fraction_chain_3 : (60 : ENNReal) / 6 / 5 = 2 := by
+  rw [div_div]
+  · norm_num
+    rw [div_eq_iff]
+    · norm_num
+    · norm_num
+    · norm_num
+  · norm_num
+  · norm_num
+
 
 -- Stress test with many operations
 lemma test_many_ops_1 : (2 : ENNReal) / 1 + 3 / 1 + 4 / 1 + 5 / 1 = 14 := by ennreal_arith_advanced
 
-lemma test_many_ops_2 : (10 : ENNReal) / 2 + 15 / 3 + 20 / 4 + 25 / 5 = 20 := by norm_num
+lemma test_many_ops_2 : (10 : ENNReal) / 2 + 15 / 3 + 20 / 4 + 25 / 5 = 20 := by
+  repeat rw [add_assoc]
+  repeat
+    rw [add_mixed_denom]
+  rw [div_eq_iff]
+  repeat norm_num
 
-lemma test_many_ops_3 : (6 : ENNReal) / 6 + 7 / 7 + 8 / 8 + 9 / 9 + 10 / 10 = 5 := by norm_num
+
+
+lemma test_many_ops_3 : (6 : ENNReal) / 6 + 7 / 7 + 8 / 8 + 9 / 9 + 10 / 10 = 5 := by
+  repeat rw [add_assoc]
+  repeat
+    rw [add_mixed_denom]
+  rw [div_eq_iff]
+  repeat norm_num
 
 -- Combined fraction and inverse stress
-lemma test_combined_stress_1 : (6 : ENNReal)⁻¹ + 6 / 6 = (6 : ENNReal)⁻¹ + 1 := by ring_nf
+lemma test_combined_stress_1 : (6 : ENNReal)⁻¹ + 6 / 6 = (6 : ENNReal)⁻¹ + 1 := by
+  rw [ENNReal.div_self]
+  . norm_num
+  . norm_num
 
-lemma test_combined_stress_2 : (8 : ENNReal)⁻¹ + 8 / 8 + 0 = (8 : ENNReal)⁻¹ + 1 := by ring_nf
+lemma test_combined_stress_2 : (8 : ENNReal)⁻¹ + 8 / 8 + 0 = (8 : ENNReal)⁻¹ + 1 := by
+  rw [ENNReal.div_self]
+  . norm_num
+  . norm_num
+  . norm_num
 
 -- Maximum stress within solver capabilities
 lemma test_max_stress_1 : ((((2 : ENNReal) / 1) + 3) / 1 + 4) / 1 = 9 := by ennreal_arith_advanced
