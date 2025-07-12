@@ -1008,7 +1008,7 @@ lemma test_combined_stress_2 : (8 : ENNReal)⁻¹ + 8 / 8 + 0 = (8 : ENNReal)⁻
 -- Maximum stress within solver capabilities
 lemma test_max_stress_1 : ((((2 : ENNReal) / 1) + 3) / 1 + 4) / 1 = 9 := by ennreal_arith_advanced
 
-lemma test_max_stress_2 : (((5 : ENNReal)⁻¹ + (5 : ENNReal)⁻¹) + 0) + 0 = 2 * (5 : ENNReal)⁻¹ := by ring_nf
+lemma test_max_stress_2 : (((5 : ENNReal)⁻¹ + (5 : ENNReal)⁻¹) + 0) + 0 = 2 * (5 : ENNReal)⁻¹ := by ennreal_arith_advanced
 
 lemma test_max_stress_3 : ((10 : ENNReal) / 10 + 20 / 20 + 30 / 30) * 2 = 6 := by ennreal_arith_advanced
 
