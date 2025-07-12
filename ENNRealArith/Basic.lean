@@ -654,9 +654,30 @@ lemma test_complex_nested : ((1 : ENNReal) / 2 + 1 / 3) / 5 = 1 / 6 := by
 section MulDivAssocTests
 
 
+
+
 -- Multiplication-division associativity lemmas
 lemma examples  : (6: ENNReal) * 5 / 6 = 5 := by
   ennreal_mul_cancel
+
+
+-- Chained divisions
+lemma test_chained_divisions {a b c : ℕ}:
+  ((↑a : ENNReal) / ↑b) / ↑c = ↑a / (↑b * ↑c) := by
+  calc ((↑a : ENNReal) / ↑b) / ↑c
+    _ = (↑a : ENNReal) / ↑b * (↑c)⁻¹ := by
+      rw [div_eq_mul_inv]
+    _ = (↑a : ENNReal) * (↑b)⁻¹ * (↑c)⁻¹ := by
+      rw [div_eq_mul_inv]
+    _ = (↑a : ENNReal) * ((↑b)⁻¹ * (↑c)⁻¹) := by
+      rw [mul_assoc]
+    _ = (↑a : ENNReal) * ((↑b * ↑c)⁻¹) := by
+      congr 1
+      rw [ENNReal.mul_inv]
+      all_goals norm_num
+    _ = (↑a : ENNReal) / (↑b * ↑c) := by
+      rw [← div_eq_mul_inv]
+
 
 
 -- Multiplication-division associativity lemmas
@@ -860,10 +881,7 @@ lemma test_complex_expression_1 : ((↑2 : ENNReal) + ↑3) * (↑4 + ↑5) / �
 -- Edge case: all zeros
 lemma test_all_zeros : (0 : ENNReal) + 0 * 0 / 1 = 0 := by ennreal_arith
 
--- Chained divisions
-lemma test_chained_divisions {a b c : ℕ} (hb : b ≠ 0) (hc : c ≠ 0) :
-  ((↑a : ENNReal) / ↑b) / ↑c = ↑a / (↑b * ↑c) := by
-  sorry
+
 
 -- Inverse and division mix
 lemma test_inv_div_mix {a b : ℕ} : (↑a : ENNReal)⁻¹ / (↑b : ENNReal)⁻¹ = ↑b / ↑a := by
