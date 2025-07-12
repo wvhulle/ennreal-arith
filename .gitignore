@@ -3,3 +3,4 @@
 .aider*
 .mcp.json
 claude-auto-resume.sh
+.env
