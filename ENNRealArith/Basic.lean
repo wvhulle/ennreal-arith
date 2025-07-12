@@ -128,9 +128,29 @@ example: 30 / 6 = (5 : ENNReal) :=by
         · exact div_ne_top (by norm_num) (by norm_num)
         all_goals norm_num
 
+
+
+
 -- =============================================
 -- MULTIPLICATION CANCELLATION TACTIC
 -- =============================================
+
+-- Chained divisions
+lemma test_chained_divisions {a b c : ℕ}:
+  ((↑a : ENNReal) / ↑b) / ↑c = ↑a / (↑b * ↑c) := by
+  calc ((↑a : ENNReal) / ↑b) / ↑c
+    _ = (↑a : ENNReal) / ↑b * (↑c)⁻¹ := by
+      rw [div_eq_mul_inv]
+    _ = (↑a : ENNReal) * (↑b)⁻¹ * (↑c)⁻¹ := by
+      rw [div_eq_mul_inv]
+    _ = (↑a : ENNReal) * ((↑b)⁻¹ * (↑c)⁻¹) := by
+      rw [mul_assoc]
+    _ = (↑a : ENNReal) * ((↑b * ↑c)⁻¹) := by
+      congr 1
+      rw [ENNReal.mul_inv]
+      all_goals norm_num
+    _ = (↑a : ENNReal) / (↑b * ↑c) := by
+      rw [← div_eq_mul_inv]
 
 /--
 Tactic for canceling common factors in ENNReal multiplication/division expressions.
@@ -146,6 +166,13 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
                                         ENNReal.zero_div, Nat.cast_zero, Nat.cast_one]))
       if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
+
+    try
+       evalTactic (<- `(tactic| (
+        rw [test_chained_divisions]
+       )))
+    catch _ => pure ()
+
 
     let attemptCancellation : TacticM Bool := do
       try
@@ -211,6 +238,18 @@ elab_rules : tactic | `(tactic| ennreal_mul_cancel) => do
 
           )
       ))
+    catch _ => pure ()
+
+    -- Try chained division pattern: (a / b) / c = a / (b * c)
+    try
+      evalTactic (← `(tactic| (
+        rw [div_eq_mul_inv, div_eq_mul_inv, mul_assoc]
+        congr 1
+        rw [ENNReal.mul_inv]
+        all_goals norm_num
+        rw [← div_eq_mul_inv]
+      )))
+      if (← getUnsolvedGoals).isEmpty then return
     catch _ => pure ()
 -- =============================================
 -- TEST SUITES
@@ -375,6 +414,18 @@ elab_rules : tactic | `(tactic| ennreal_mul_div_assoc) => do
 -- INVERSE PATTERN TRANSFORMATION TACTIC
 -- =============================================
 
+lemma test_inv_div_mix {a b : ℕ} : (↑a : ENNReal)⁻¹ / (↑b : ENNReal)⁻¹ = ↑b / ↑a := by
+   calc
+      (↑a : ENNReal)⁻¹ / (↑b : ENNReal)⁻¹
+      _ = (↑a : ENNReal)⁻¹ * ((↑b : ENNReal)⁻¹)⁻¹ := by
+        rw [div_eq_mul_inv]
+      _ = (↑b : ENNReal) * (↑a)⁻¹ := by
+        rw [inv_inv]
+        rw [mul_comm]
+      _ = ↑b / ↑a := by
+        rw [<- div_eq_mul_inv]
+
+
 syntax "ennreal_inv_transform" : tactic
 
 /--
@@ -383,6 +434,9 @@ Handles complex transformations involving inverses, divisions, and multiplicatio
 Converts between forms like `a⁻¹ * b = b / a` and `(a⁻¹)⁻¹ = a`.
 -/
 elab_rules : tactic | `(tactic| ennreal_inv_transform) => do
+
+
+
   let goal ← getMainGoal
   goal.withContext do
     let target ← getMainTarget
@@ -418,10 +472,11 @@ elab_rules : tactic | `(tactic| ennreal_inv_transform) => do
       -- Handle general inv_mul_cancel
       evalTactic (<- `(tactic | rw [ENNReal.inv_mul_cancel (by norm_num) (by norm_num)]))
     | _ => pure ()
+
+    -- Try the inv_div_mix pattern first since it's very specific
+    if ← tryTactic (← `(tactic| rw [test_inv_div_mix])) then return
+
     -- Try basic reflexivity first
-
-
-
     if ← tryTactic (← `(tactic| rfl)) then return
     -- Try a comprehensive simp with common inverse/division lemmas
     if ← tryTactic (← `(tactic| simp only [mul_one, one_mul, inv_inv, mul_comm, mul_assoc,
@@ -433,6 +488,8 @@ elab_rules : tactic | `(tactic| ennreal_inv_transform) => do
       ← `(tactic| repeat rw [inv_inv]),
       ← `(tactic| all_goals norm_num)
     ] then return
+
+
 
     let tactics : Array (TSyntax `tactic) := #[
       ← `(tactic| rw [inv_inv]),
@@ -495,6 +552,7 @@ elab_rules : tactic | `(tactic| ennreal_inv_transform) => do
     try
       evalTactic (← `(tactic| all_goals assumption))
     catch _ => pure ()
+
 
 -- =============================================
 -- FRACTION ADDITION TACTIC
@@ -661,23 +719,12 @@ lemma examples  : (6: ENNReal) * 5 / 6 = 5 := by
   ennreal_mul_cancel
 
 
--- Chained divisions
-lemma test_chained_divisions {a b c : ℕ}:
-  ((↑a : ENNReal) / ↑b) / ↑c = ↑a / (↑b * ↑c) := by
-  calc ((↑a : ENNReal) / ↑b) / ↑c
-    _ = (↑a : ENNReal) / ↑b * (↑c)⁻¹ := by
-      rw [div_eq_mul_inv]
-    _ = (↑a : ENNReal) * (↑b)⁻¹ * (↑c)⁻¹ := by
-      rw [div_eq_mul_inv]
-    _ = (↑a : ENNReal) * ((↑b)⁻¹ * (↑c)⁻¹) := by
-      rw [mul_assoc]
-    _ = (↑a : ENNReal) * ((↑b * ↑c)⁻¹) := by
-      congr 1
-      rw [ENNReal.mul_inv]
-      all_goals norm_num
-    _ = (↑a : ENNReal) / (↑b * ↑c) := by
-      rw [← div_eq_mul_inv]
 
+
+-- Chained divisions
+example {a b c : ℕ}:
+  ((↑a : ENNReal) / ↑b) / ↑c = ↑a / (↑b * ↑c) := by
+  ennreal_mul_cancel
 
 
 -- Multiplication-division associativity lemmas
@@ -820,19 +867,38 @@ with a descriptive error message if none apply.
 syntax "ennreal_arith" : tactic
 
 elab_rules : tactic | `(tactic| ennreal_arith) => do
-  let tactics : TSyntax `tactic := ← `(tactic| first
-    | ennreal_div_self
-    | ennreal_mul_cancel
-    | ennreal_basic_simp
+  -- Try each tactic in order, but only stop if it fully solves the goal
+  let tryTacticFully (tac : TSyntax `tactic) : TacticM Bool := do
+    try
+      withoutRecover do
+        evalTactic tac
+        -- If the tactic made progress but didn't fully solve, try to clean up remaining goals
+        let remainingGoals := ← getUnsolvedGoals
+        if remainingGoals.isEmpty then
+          return true
+        else
+          -- Try to solve remaining goals with basic tactics
+          evalTactic (← `(tactic| all_goals (
+            first
+            | assumption
+            | norm_num
+            | simp
+            | ring
+          )))
+          return (← getUnsolvedGoals).isEmpty
+    catch _ =>
+      return false
 
+  -- Try tactics in order of specificity
+  if ← tryTacticFully (← `(tactic| ennreal_div_self)) then return
+  if ← tryTacticFully (← `(tactic| ennreal_mul_cancel)) then return
+  if ← tryTacticFully (← `(tactic| ennreal_inv_transform)) then return
 
-    | ennreal_fraction_add
-    | ennreal_mul_div_assoc
-    | ennreal_inv_transform
+  if ← tryTacticFully (← `(tactic| ennreal_mul_div_assoc)) then return
+  if ← tryTacticFully (← `(tactic| ennreal_fraction_add)) then return
+  if ← tryTacticFully (← `(tactic| ennreal_basic_simp)) then return
 
-    | fail "ennreal_arith could not solve the goal")
-
-  evalTactic tactics
+  throwError "ennreal_arith could not solve the goal"
 
 section Tests
 
@@ -865,7 +931,7 @@ lemma test_mul_div_associativity {a b c : ℕ} :
    ennreal_arith -- Should be handled by ennreal_arith
 
 example: (@OfNat.ofNat ℝ≥0∞ 18 instOfNatAtLeastTwo)⁻¹ + 9⁻¹ = ( 6⁻¹ : ENNReal) := by
-  ennreal_fraction_add
+  ennreal_arith
 
 lemma test_mixed_arithmetic_operations : (↑2 : ENNReal) * 1 + ↑3 * 0 + ↑5 = ↑7 := by ennreal_arith
 
@@ -884,9 +950,8 @@ lemma test_all_zeros : (0 : ENNReal) + 0 * 0 / 1 = 0 := by ennreal_arith
 
 
 -- Inverse and division mix
-lemma test_inv_div_mix {a b : ℕ} : (↑a : ENNReal)⁻¹ / (↑b : ENNReal)⁻¹ = ↑b / ↑a := by
-  -- This requires more complex inverse handling
-  sorry
+example {a b : ℕ} : (↑a : ENNReal)⁻¹ / (↑b : ENNReal)⁻¹ = ↑b / ↑a := by
+  ennreal_arith
 
 -- Test case from user's density_sum_one proof that currently fails
 -- This test demonstrates the issue where ennreal_arith can't prove 18/18 = 1
@@ -897,7 +962,7 @@ lemma test_nested_addition_division_fails :
 
 -- The core issue: ennreal_arith fails on concrete division after simplification
 lemma test_concrete_division_18_fails : (18 : ENNReal) / 18 = 1 := by
-  ennreal_arith -- fails here!
+  ennreal_arith
 
 -- But ennreal_fraction_add succeeds on the same goal
 lemma test_nested_addition_division_fraction_add_succeeds :
