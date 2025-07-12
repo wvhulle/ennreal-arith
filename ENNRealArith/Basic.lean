@@ -1,7 +1,11 @@
 import ENNRealArith.ArithmeticCore
 import ENNRealArith.FractionOperations
--- import Qq
+
+
 open Lean Meta Elab Tactic ENNReal Qq
+
+
+
 namespace ENNRealArith
 
 
@@ -35,6 +39,7 @@ elab_rules : tactic | `(tactic| ennreal_div_self) =>  do
     | _ => pure ()
   -- First try norm_num for concrete numeric cases
   if ← tryTactic (← `(tactic| norm_num)) then return
+
 
 
 
@@ -319,6 +324,33 @@ lemma test_division_self_succ_zero : (↑(0 + 1) : ENNReal) / ↑(0 + 1) = 1 := 
 
 
 lemma test_division_self_succ_pattern {n : ℕ} : (↑(Nat.succ n) : ENNReal) / ↑(Nat.succ n) = 1 := by ennreal_div_self
+
+-- Test with multiplication expression
+lemma test_division_self_product : (↑(2 * 3) : ENNReal) / ↑(2 * 3) = 1 := by
+  ennreal_div_self
+
+-- Test with addition expression
+lemma test_division_self_sum : (↑(2 + 3) : ENNReal) / ↑(2 + 3) = 1 := by
+  ennreal_div_self
+
+-- Test with ENNReal arithmetic operations (not just nat casts)
+lemma test_division_self_ennreal_expr : ((2 : ENNReal) + 3) / (2 + 3) = 1 := by
+  ennreal_div_self
+
+-- Test what happens with infinity: ⊤ / ⊤ = 0 (not 1!)
+lemma test_division_infinity_manual : (⊤ : ENNReal) / ⊤ = 0 := by
+  -- Manual proof first
+  simp [ENNReal.div_top]
+
+-- Test with different expressions that evaluate to the same value
+lemma test_division_equivalent_expressions_manual : ((2 + 3) : ENNReal) / (1 + 4) = 1 := by
+  ennreal_div_self
+
+-- Now try with the tactic - this will likely fail since the tactic checks syntactic equality
+lemma test_division_equivalent_expressions_auto : ((2 + 3) : ENNReal) / (1 + 4) = 1 := by
+  ennreal_div_self
+
+
 
 end DivSelfTests
 
