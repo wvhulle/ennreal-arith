@@ -1,359 +1,14 @@
-import ENNRealArith.ArithmeticCore
-import ENNRealArith.ImprovedSolver
-import Lean.Meta.Tactic.Simp
-import Lean.Elab.Tactic.Basic
-import Lean.Expr
-import Lean.PrettyPrinter
-import Qq
-/-!
-# Advanced ENNReal Arithmetic Solver
+import ENNRealArith
 
-This module implements the next steps for production use:
-1. Enhanced multi-step arithmetic evaluation
-2. Improved fraction and rational handling
-3. Complex nested operation support
-4. Comprehensive test suite with challenging cases
-
-## Key Improvements
-- Multi-phase normalization for complex expressions
-- Better handling of associativity and distributivity
-- Enhanced error recovery and fallback mechanisms
--/
-
-open Lean Meta Elab Tactic ENNReal Qq
-
-namespace ENNRealArith.Advanced
-
-lemma inv_div_eq_div {a b : ℕ} : (↑a : ENNReal)⁻¹ / (↑b : ENNReal)⁻¹ = ↑b / ↑a := by
-   calc
-      (↑a : ENNReal)⁻¹ / (↑b : ENNReal)⁻¹
-      _ = (↑a : ENNReal)⁻¹ * ((↑b : ENNReal)⁻¹)⁻¹ := by
-        rw [div_eq_mul_inv]
-      _ = (↑b : ENNReal) * (↑a)⁻¹ := by
-        rw [inv_inv]
-        rw [mul_comm]
-      _ = ↑b / ↑a := by
-        rw [<- div_eq_mul_inv]
-
-lemma add_mixed_denom {a b c d : ENNReal} {hc : c ≠ 0} {hd : d ≠ 0} {hct: c ≠ ⊤} {hdt: d ≠ ⊤} :
-  a / c + b / d = (a * d + b * c) / (c * d)  := by
-    have h1 : a / c = (a * d) / (c * d) := by
-      rw [<- ENNReal.mul_div_mul_right] <;> norm_num
-      · assumption
-      · assumption
-    have h2 : b / d = (b * c) / (c * d) := by
-      rw [mul_comm c d]
-      rw [<- ENNReal.mul_div_mul_right] <;> norm_num
-      · assumption
-      · assumption
-    rw [h1, h2]
-    rw [← ENNReal.div_add_div_same]
-
-lemma div_div_cast {a b c : ℕ}:
-  ((↑a : ENNReal) / ↑b) / ↑c = ↑a / (↑b * ↑c) := by
-  calc ((↑a : ENNReal) / ↑b) / ↑c
-    _ = (↑a : ENNReal) / ↑b * (↑c)⁻¹ := by
-      rw [div_eq_mul_inv]
-    _ = (↑a : ENNReal) * (↑b)⁻¹ * (↑c)⁻¹ := by
-      rw [div_eq_mul_inv]
-    _ = (↑a : ENNReal) * ((↑b)⁻¹ * (↑c)⁻¹) := by
-      rw [mul_assoc]
-    _ = (↑a : ENNReal) * ((↑b * ↑c)⁻¹) := by
-      congr 1
-      rw [ENNReal.mul_inv]
-      all_goals norm_num
-    _ = (↑a : ENNReal) / (↑b * ↑c) := by
-      rw [← div_eq_mul_inv]
-
-lemma div_div {a b c : ENNReal} {h: b ≠ 0} {g: c ≠ 0}:
-  (a / b) / c = a / (b * c) := by
-  calc (a / b) / c
-    _ = (a / b) * c⁻¹ := by
-      rw [div_eq_mul_inv]
-    _ = a * b⁻¹ * c⁻¹ := by
-      rw [div_eq_mul_inv]
-    _ = a  * ((b)⁻¹ * (c)⁻¹) := by
-      rw [mul_assoc]
-    _ = a * ((b * c)⁻¹) := by
-      congr 1
-      rw [ENNReal.mul_inv]
-      . exact Or.inl h
-      . exact Or.inr g
-    _ = a   / (b * c) := by
-      rw [← div_eq_mul_inv]
-
-lemma add_div_eq_div {a b c  : ENNReal} {hc : c ≠ 0}  {hct: c ≠ ⊤}  :
-  a + b / c = (a * c + b ) / c  := by
-    have h1 : a = (a * c) / c := by
-      exact Eq.symm (ENNReal.mul_div_cancel_right hc hct)
-    rw [h1]
-
-    rw [ENNReal.div_add_div_same]
-    rw [ENNReal.div_eq_div_iff]
-    rw [mul_div_assoc]
-    rw [ENNReal.div_self]
-    ring
-    all_goals assumption
-
-lemma div_eq_iff {a b c : ENNReal} {hc : c ≠ 0} {hct: c ≠ ⊤} :
-  a / c = b ↔ a = b * c := by
-    constructor
-    · intro h
-      rw [<- ENNReal.mul_right_inj hc] at h
-      -- rw [mul_div_assoc c b c] at h
-      have: c * ( a / c ) = c * a / c := by
-        exact Eq.symm (mul_div_assoc c a c)
-      rw [this] at h
-      rw [mul_comm] at h
-      rw [ENNReal.mul_div_cancel_right hc hct] at h
-      rw [mul_comm] at h
-      exact h
-      assumption
-    · intro h
-      rw [h]
-      rw [ENNReal.mul_div_cancel_right hc hct]
-
-lemma eq_as_real {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
-    a = b ↔ a.toReal = b.toReal := by
-  constructor
-  · intro h
-    rw [h]
-  · intro h
-    rw [← ENNReal.ofReal_toReal ha, ← ENNReal.ofReal_toReal hb, h]
-
-/-!
-Count occurrences of ENNReal.ofReal in an expression
--/
-partial def countOfRealOccurrences (e : Expr) : Nat := Id.run do
-  let mut count := 0
-  if e.isAppOf ``ENNReal.ofReal then
-    count := count + 1
-  for arg in e.getAppArgs do
-    count := count + countOfRealOccurrences arg
-  return count
-
-/-!
-Check if an expression is a literal or simple ENNReal.ofReal application
--/
-def isLiteralOrSimpleOfReal (e : Expr) : Bool := Id.run do
-  -- Check if it's a numeric literal
-  if e.isLit then return true
-
-  -- Check if it's ANY ENNReal.ofReal application (norm_num can handle the argument)
-  if e.isAppOf ``ENNReal.ofReal then
-    return true
-
-  -- Check for OfNat.ofNat patterns (numeric literals in ENNReal)
-  if e.isAppOfArity ``OfNat.ofNat 3 then
-    let args := e.getAppArgs
-    if args.size >= 3 then
-      let typeArg := args[0]!  -- Should be ℝ≥0∞
-      let numArg := args[1]!   -- Should be the number literal
-      return typeArg.isAppOf ``ENNReal && numArg.isLit
-
-  -- Check for simple numeric literals cast to ENNReal like (1 : ENNReal)
-  if e.isAppOf ``Nat.cast then
-    let args := e.getAppArgs
-    if args.size >= 3 then
-      let typeArg := args[1]!  -- Should be ℝ≥0∞
-      let numArg := args[2]!   -- Should be the number literal
-      return typeArg.isAppOf ``ENNReal && numArg.isLit
-
-  return false
-
-/-!
-Check if the goal is ready for final computation:
-- Must be an equality
-- Both sides must be literals or simple ENNReal.ofReal applications
--/
-def isReadyForFinalComputation (goalType : Expr) : TacticM Bool := do
-  -- Check if it's an equality (Eq)
-  if !goalType.isAppOf ``Eq then return false
-
-  let args := goalType.getAppArgs
-  if args.size < 3 then return false
-
-  let lhs := args[1]!  -- Left-hand side
-  let rhs := args[2]!  -- Right-hand side
-
-  let lhsReady := isLiteralOrSimpleOfReal lhs
-  let rhsReady := isLiteralOrSimpleOfReal rhs
-
-  logInfo m!"Debug: LHS ready: {lhsReady}, RHS ready: {rhsReady}"
-  logInfo m!"Debug: LHS: {lhs}, RHS: {rhs}"
-
-  return lhsReady && rhsReady
-
-/-!
-Recursively find all ENNReal expressions in a term that look like finite literals.
-Specifically looks for patterns like: @OfNat.ofNat ℝ≥0∞ 5000 instOfNatAtLeastTwo : ℝ≥0∞
--/
-partial def findENNRealLiterals (e : Expr) : Array Expr := Id.run do
-  let mut literals := #[]
-
-  -- Main pattern: @OfNat.ofNat ℝ≥0∞ n instance : ℝ≥0∞
-  if e.isAppOfArity ``OfNat.ofNat 3 then
-    let args := e.getAppArgs
-    if args.size >= 3 then
-      let typeArg := args[0]!  -- Should be ℝ≥0∞
-      let numArg := args[1]!   -- Should be the number literal
-      -- Check if the type is ENNReal and the number is a literal
-      if typeArg.isAppOf ``ENNReal && numArg.isLit then
-        literals := literals.push e
-
-  -- Fallback: Check for Coe.coe applications to ENNReal
-  if e.isAppOfArity ``Coe.coe 3 then
-    let args := e.getAppArgs
-    if args.size >= 3 then
-      let target := args[1]!
-      if target.isAppOf ``ENNReal then
-        let source := args[2]!
-        -- Check if it's a natural number literal
-        if source.isLit then
-          literals := literals.push e
-
-  -- Recursively search subexpressions
-  for arg in e.getAppArgs do
-    literals := literals ++ findENNRealLiterals arg
-
-  return literals
-
--- /--
--- Modern arithmetic expression analyzer for systematic tactic selection.
--- Analyzes the goal structure to choose optimal solving strategies.
--- -/
--- inductive ExprPattern where
---   | BasicArithmetic : ExprPattern  -- Simple +, *, / with literals
---   | ComplexFraction : ExprPattern  -- Nested fractions, chains
---   | MixedOperations : ExprPattern  -- Combined +, *, / with nesting
---   | LargeNumbers : ExprPattern     -- Numbers > 100
---   | SelfDivision : ExprPattern     -- x/x patterns
---   | ToRealConversion : ExprPattern -- Needs toReal/ofReal lifting
-
--- /--
--- Analyzes the goal expression to determine the best solving strategy.
--- -/
--- def analyzeExpression (e : Expr) : ExprPattern := Id.run do
---   let literals := findENNRealLiterals e
-
---   -- Check for large numbers (> 100) by examining literal structure
---   let mut hasLargeNumbers := false
---   for lit in literals do
---     if lit.isAppOfArity ``OfNat.ofNat 3 then
---       let args := lit.getAppArgs
---       if args.size >= 2 then
---         if let some (Expr.lit (.natVal n)) := args[1]? then
---           if n > 100 then hasLargeNumbers := true
-
---   -- Check for division patterns
---   let hasDivision := (e.find? (fun subExpr => subExpr.isAppOf ``HDiv.hDiv)).isSome
---   let hasNestedOps := e.getAppArgs.size > 3
-
---   -- Check for self-division patterns (a/a) - simplified
---   let hasSelfDiv := false
-
---   if hasLargeNumbers then ExprPattern.ToRealConversion
---   else if hasSelfDiv then ExprPattern.SelfDivision
---   else if hasDivision && hasNestedOps then ExprPattern.ComplexFraction
---   else if hasNestedOps then ExprPattern.MixedOperations
---   else ExprPattern.BasicArithmetic
-
-/--
-State-of-the-art ENNReal arithmetic solver using modern expression analysis.
-Implements a systematic approach based on proven evaluation patterns.
-
-Architecture:
-1. Multi-Strategy Approach - Try multiple strategies robustly
-2. Fallback Chain - Graceful degradation through strategy levels
-3. Comprehensive Coverage - Handle all expression types
-
-This follows modern theorem prover design patterns used in Lean's norm_num,
-ring, and field_simp tactics, but with ENNReal-specific optimizations.
--/
-def ennrealToReal : TacticM Unit := do
-  let goal ← getMainGoal
-  let goalType ← goal.getType
-  let literals := findENNRealLiterals goalType
-  if literals.isEmpty then
-    logInfo "No ENNReal literals found in the goal."
-    return ()
+open ENNReal
 
 
-  for lit in literals do
-    try
-      let litSyntax ←  lit.toSyntax
-      -- Create the tactic with the specific literal embedded
-      evalTactic (← `(tactic| rw [← ENNReal.ofReal_toReal (by norm_num : $litSyntax ≠ ⊤)]))
-      -- Simplify ENNReal.toReal applications
-      evalTactic (← `(tactic| simp only [ENNReal.toReal_ofNat]))
-      logInfo m!"Converted literal {lit} to Real successfully"
-      logInfo m!"Goal after conversion: {← getMainGoal}"
-    catch _ =>
-      logWarning m!"Failed to convert literal {lit}, skipping"
-      continue
 
-  logInfo m!"Goal after all literal conversions: {← getMainGoal}"
-  let maxIterations := 10
-  for _ in List.range maxIterations do
+-- set_option trace.ENNRealArith.conversion true in
+lemma test_solve_as_real_inverse_1 : (5 : ENNReal)⁻¹ = 1 / 5 := by solve_as_real
 
 
-    let liftingPhases := [
-      ← `(tactic| (rw [← ENNReal.ofReal_inv_of_pos (by norm_num : (0 : ℝ) < _)])),
-      ← `(tactic| (rw [← ENNReal.ofReal_div_of_pos (by norm_num : (0 : ℝ) < _)])),
-      ← `(tactic| (rw [← ENNReal.ofReal_mul])),
-      ← `(tactic| (rw [← ENNReal.ofReal_add])),
 
-    ]
-
-    for phase in liftingPhases do
-      let goal ← getMainGoal
-      let goalTypeBefore ← goal.getType
-      let ofRealCountBefore := countOfRealOccurrences goalTypeBefore
-      logInfo m!"Applying lifting phase: {phase} to {goal}"
-      logInfo m!"ENNReal.ofReal count before: {ofRealCountBefore}"
-      try
-        evalTactic phase
-        let goalAfter ← getMainGoal
-        let goalTypeAfter ← goalAfter.getType
-        let ofRealCountAfter := countOfRealOccurrences goalTypeAfter
-        logInfo m!"Lifting phase succeeded, current goals: {goalAfter}"
-        logInfo m!"ENNReal.ofReal count after: {ofRealCountAfter}"
-
-        if ← isReadyForFinalComputation goalTypeAfter then
-          logInfo "Goal is ready for final computation"
-          break
-      catch _ =>
-        logWarning m!"Lifting phase failed: {phase}, continuing"
-        continue
-    let goalAfter ← getMainGoal
-    let goalTypeAfter ← goalAfter.getType
-    if ← isReadyForFinalComputation goalTypeAfter then
-          logInfo "Goal is ready for final computation after iteration"
-          break
-
-  logInfo "Ready for final computation phase"
-
-  try
-    evalTactic (← `(tactic| all_goals norm_num))
-    let goals ← getUnsolvedGoals
-    if goals.isEmpty then
-      logInfo "Successfully solved with omega"
-      return
-  catch _ =>
-    logWarning "All tactics failed, unsolved goal remains"
-    pure ()
-
-/--
-Syntax for the solve_as_real tactic
--/
-syntax "solve_as_real" : tactic
-
-elab_rules : tactic | `(tactic| solve_as_real) => do
-  ennrealToReal
-
-        -- ← `(tactic| (try rw [← ENNReal.ofReal_div_of_pos] <;> norm_num)),
-        -- ← `(tactic| (try rw [← ENNReal.ofReal_mul])),
-        -- ← `(tactic| (try rw [← ENNReal.ofReal_add]))
 lemma test_fraction_chain_1 : (12 : ENNReal) / 3 / 2 = 2 := by
   calc 12 / 3 / 2
   _ = (ENNReal.ofReal 12) / (ENNReal.ofReal 3) /  (ENNReal.ofReal 2) := by
@@ -376,203 +31,18 @@ lemma test_fraction_chain_1 : (12 : ENNReal) / 3 / 2 = 2 := by
   _ = 2 := by
     norm_num
 
--- lemma test_fraction_chain_1_auto : (12 : ENNReal) / 3 / 2 = 2 := by
---   solve_as_real
-
--- lemma test_large_fraction_3_manual : (5000 : ENNReal) / 1000 * 3 = 15 := by
---   rw [← ENNReal.ofReal_toReal (by norm_num: (5000 : ENNReal) ≠ ⊤)]
---   rw [← ENNReal.ofReal_toReal (by norm_num : (1000 : ENNReal) ≠ ⊤)]
---   rw [← ENNReal.ofReal_toReal (by norm_num : (3 : ENNReal) ≠ ⊤)]
---   rw [← ENNReal.ofReal_toReal (by norm_num : (15 : ENNReal) ≠ ⊤)]
---   rw [← ENNReal.ofReal_div_of_pos]
---   · norm_num
---   · norm_num
+lemma test_fraction_chain_1_auto : (12 : ENNReal) / 3 / 2 = 2 := by
+  solve_as_real
 
 
--- lemma test_large_fraction_3 : (5000 : ENNReal) / 1000 * 3 = 15 := by
---   solve_as_real
+lemma test_large_fraction_3 : (5000 : ENNReal) / 1000 * 3 = 15 := by
+  solve_as_real
 
 
 lemma test_nested_parens_2 : (((1 : ENNReal) * 2) * 3) * 4 = 24 := by solve_as_real
 
--- -- =============================================
--- -- ENHANCED MULTI-STEP ARITHMETIC SOLVER
--- -- =============================================
 
--- /--
--- Advanced arithmetic normalization that handles complex nested expressions
--- by applying multiple rounds of simplification.
-
--- Strategy:
--- 1. Aggressive normalization with associativity and commutativity
--- 2. Distributivity expansion and collection
--- 3. Identity element cleanup (0 and 1)
--- 4. Division simplification
--- 5. Ring normalization
--- 6. Field simplification as fallback
--- 7. Linear arithmetic for natural number casts
--- -/
--- def solveComplexArithmetic : TacticM Bool := do
---   let complexTactics := [
---     -- Phase 1: Aggressive arithmetic normalization
---     ← `(tactic| (simp only [add_assoc, mul_assoc, add_comm, mul_comm]; norm_num)),
---     -- Phase 2: Distributivity and collection
---     ← `(tactic| (simp only [add_mul, mul_add, mul_assoc, add_assoc]; norm_num)),
---     -- Phase 3: Zero and one cleanup
---     ← `(tactic| (simp only [add_zero, zero_add, mul_one, one_mul, mul_zero, zero_mul]; norm_num)),
---     -- Phase 4: Division simplification
---     ← `(tactic| (simp only [div_one, one_div, mul_div_assoc]; norm_num)),
---     -- Phase 5: Advanced ring normalization
---     ← `(tactic| (ring_nf; norm_num)),
---     -- Phase 6: Force evaluation with field operations
---     ← `(tactic| (field_simp; ring; norm_num)),
---     -- Phase 7: Omega for linear arithmetic when possible
---     ← `(tactic| (simp only [Nat.cast_add, Nat.cast_mul]; omega))
---   ]
-
---   for tactic in complexTactics do
---     try
---       evalTactic tactic
---       if (← getUnsolvedGoals).isEmpty then return true
---     catch _ => continue
---   return false
-
--- /--
--- Enhanced fraction and inverse arithmetic with improved division handling.
-
--- The tactic is organized in phases from general to specific:
--- - Phase 1: Basic normalization (norm_num, ring_nf)
--- - Phase 2: General simplification patterns
--- - Phase 3: Division equation solving
--- - Phase 4: Specific patterns for self-division, mixed denominators
--- - Phase 5: Advanced patterns for nested operations
--- - Phase 6: Conversion-based approaches (toReal/ofReal)
-
--- All patterns avoid magic numbers and focus on general algebraic properties.
--- -/
--- def solveAdvancedFractions : TacticM Bool := do
---   let fractionTactics := [
---     -- Basic fraction arithmetic
---     ← `(tactic| norm_num),
---     -- Try div_eq_iff for simple division equations
---     ← `(tactic| (try (rw [div_eq_iff]; norm_num; norm_num; norm_num))),
---     -- div_div pattern using cast version (simpler)
---     ← `(tactic| (try (rw [div_div_cast]; norm_num))),
---     -- Mixed denominator addition pattern (safe version)
---     ← `(tactic| (try (rw [add_mixed_denom (hc := by norm_num) (hd := by norm_num) (hct := by norm_num) (hdt := by norm_num)]; norm_num; rw [div_eq_iff]; norm_num; norm_num; norm_num))),
---     -- Self-division with multiplication pattern - exact manual proof sequence
---     ← `(tactic| (try (rw [ENNReal.div_self]; rw [mul_div_assoc]; rw [ENNReal.div_self]; norm_num; norm_num; norm_num; norm_num; norm_num))),
---     -- Another self-division pattern for: a/a * b/b
---     ← `(tactic| (try (simp only [ENNReal.div_self, mul_div_assoc]; norm_num))),
---     -- Pattern for inv_mul_cancel: a⁻¹ * a = 1
---     ← `(tactic| (try (simp only [ENNReal.inv_mul_cancel]; norm_num))),
---     -- Comprehensive pattern for multiple self-divisions and inverse cancellations
---     ← `(tactic| (try (simp only [ENNReal.div_self, mul_div_assoc, ENNReal.inv_mul_cancel, div_eq_mul_inv]; norm_num))),
---     -- Multiple self-divisions
---     ← `(tactic| (try (repeat rw [ENNReal.div_self]; norm_num; norm_num; norm_num; norm_num; norm_num))),
---     -- Self-division patterns
---     ← `(tactic| (simp only [ENNReal.div_self]; norm_num)),
---     ← `(tactic| (simp only [div_self]; norm_num)),
---     -- Enhanced division patterns
---     ← `(tactic| (simp only [div_div]; norm_num)),
---     -- Ring normalization for inverse patterns
---     ← `(tactic| (ring_nf; norm_num)),
---     -- Common denominators
---     ← `(tactic| (simp only [ENNReal.div_add_div_same]; norm_num)),
---     -- Pattern from test_multi_div_1/2: div_one then div_eq_iff
---     ← `(tactic| (try (rw [div_one]; rw [div_eq_iff]; norm_num; norm_num; norm_num))),
---     -- Extended pattern for nested division: ((a / b) / 1)
---     ← `(tactic| (try (simp only [div_one]; rw [div_eq_iff]; norm_num; norm_num; norm_num))),
---     -- Pattern for division by (x / 1): a / (b / 1)
---     ← `(tactic| (try (rw [div_one]; simp only [div_div]; rw [div_eq_iff]; norm_num; norm_num; norm_num))),
---     -- Pattern from test_fraction_chain_1/2/3: div_div then div_eq_iff inside
---     ← `(tactic| (try (rw [div_div]; norm_num; rw [div_eq_iff]; norm_num; norm_num; norm_num; norm_num; norm_num))),
---     -- Pattern from test_many_ops_2/3: repeated add_assoc and add_mixed_denom
---     ← `(tactic| (try (repeat rw [add_assoc]; repeat rw [add_mixed_denom]; rw [div_eq_iff]; repeat norm_num))),
---     -- Pattern from test_large_fraction_2: using toReal conversions
---     ← `(tactic| (try (apply eq_as_real; simp only [toReal_add, toReal_div]; norm_num; exact div_ne_top (by norm_num) (by norm_num); norm_num; refine add_ne_top.mpr ?_; apply And.intro; exact div_ne_top (by norm_num) (by norm_num); norm_num; norm_num))),
---     -- Pattern from test_large_fraction_3: mul_comm and ofReal conversions
---     ← `(tactic| (try (rw [mul_comm]; rw [<- ENNReal.ofReal_toReal (by norm_num)]; rw [<- ENNReal.ofReal_toReal (by norm_num)]; rw [<- ENNReal.ofReal_div_of_pos]; norm_num; norm_num))),
---     -- Basic ring_nf alone for simpler inverse cases
---     ← `(tactic| ring_nf),
---     -- Pattern from test_combined_stress_1/2: just ENNReal.div_self
---     ← `(tactic| (try (rw [ENNReal.div_self]; norm_num; norm_num; norm_num)))
---   ]
-
---   for tactic in fractionTactics do
---     try
---       evalTactic tactic
---       if (← getUnsolvedGoals).isEmpty then return true
---     catch _ => continue
---   return false
-
--- /--
--- Specialized solver for deeply nested expressions
--- -/
--- def solveNestedExpressions : TacticM Bool := do
---   let nestedTactics := [
---     -- Flatten nested operations first
---     ← `(tactic| (simp only [add_assoc, mul_assoc]; simp only [add_comm, mul_comm]; norm_num)),
---     -- Apply distributivity systematically
---     ← `(tactic| (simp only [add_mul, mul_add]; simp only [add_assoc, mul_assoc]; norm_num)),
---     -- Handle large number arithmetic
---     ← `(tactic| (norm_num)),
---     -- Advanced simplification
---     ← `(tactic| (ring_nf; norm_num))
---   ]
-
---   for tactic in nestedTactics do
---     try
---       evalTactic tactic
---       if (← getUnsolvedGoals).isEmpty then return true
---     catch _ => continue
---   return false
-
--- -- =============================================
--- -- PRODUCTION-READY ADVANCED TACTIC
--- -- =============================================
-
--- /--
--- Advanced ENNReal arithmetic tactic that builds on the improved solver
--- with enhanced capabilities for complex expressions.
--- -/
--- syntax "ennreal_arith_advanced" : tactic
-
--- elab_rules : tactic | `(tactic| ennreal_arith_advanced) => do
---   -- Phase 1: Try the improved solver first (handles most cases)
---   try
---     evalTactic (← `(tactic| ennreal_arith_improved))
---     if (← getUnsolvedGoals).isEmpty then return
---   catch _ => pure ()
-
---   -- Phase 2: Try complex arithmetic solver
---   if ← solveComplexArithmetic then return
-
---   -- Phase 3: Try advanced fraction handling
---   if ← solveAdvancedFractions then return
-
---   -- Phase 4: Try nested expression solver
---   if ← solveNestedExpressions then return
-
---   -- Phase 5: Enhanced error reporting for complex cases
---   let target ← getMainTarget
---   if target.isAppOf ``HAdd.hAdd then
---     throwError "Complex addition expression requires manual simplification.\nTry: Use associativity lemmas or break into smaller parts."
---   else if target.isAppOf ``HMul.hMul then
---     throwError "Complex multiplication expression requires manual simplification.\nTry: Use distributivity lemmas or factor common terms."
---   else if target.isAppOf ``HDiv.hDiv then
---     throwError "Complex division expression requires manual simplification.\nTry: Simplify numerator and denominator separately."
---   else
---     throwError "ennreal_arith_advanced could not solve this complex expression.\nTry: Break the expression into simpler components or use specific lemmas."
-
--- -- =============================================
--- -- COMPREHENSIVE COMPLEX TEST SUITE
--- -- =============================================
-
--- section BasicAdvancedTests
-
--- -- Verify that basic cases still work
--- lemma test_advanced_basic : (2 : ENNReal) + 3 = 5 := by solve_as_real
+lemma test_advanced_basic : (2 : ENNReal) + 3 = 5 := by solve_as_real
 
 -- lemma test_advanced_multiplication : (2 : ENNReal) * 3 * 4 = 24 := by ennreal_arith_advanced
 
@@ -688,40 +158,6 @@ lemma test_nested_parens_2 : (((1 : ENNReal) * 2) * 3) * 4 = 24 := by solve_as_r
 --   (1 : ENNReal) * (1 + 1) * (1 + 1 + 1) * (1 + 1 + 1 + 1) * (1 + 1 + 1 + 1 + 1) = 120 := by ennreal_arith_advanced
 
 -- end StressTests
-
--- -- =============================================
--- -- PERFORMANCE AND LIMITS DEMONSTRATION
--- -- =============================================
-
--- /-!
--- ## Performance Analysis and Limits
-
--- The advanced solver demonstrates significant improvements over the basic approach:
-
--- ### ✅ Successfully Handles:
--- 1. **Deep Nesting**: Up to 6-7 levels of nested operations
--- 2. **Large Arithmetic**: Chains of 10+ operations
--- 3. **Mixed Operations**: Complex combinations of +, *, with parentheses
--- 4. **Distributivity**: Automatic expansion and simplification
--- 5. **Associativity**: Flexible grouping of operations
--- 6. **Large Numbers**: Arithmetic with numbers up to 1000+
-
--- ### 🔄 Current Limitations:
--- 1. **Division**: Complex fraction arithmetic still needs work
--- 2. **Inverse Operations**: inv patterns require manual handling
--- 3. **Subtraction**: ENNReal doesn't support subtraction naturally
--- 4. **Very Deep Nesting**: 10+ levels may require manual steps
-
--- ### 📊 Architectural Benefits Realized:
--- - **Systematic Approach**: Predictable solving strategy
--- - **Graceful Degradation**: Falls back to simpler solvers
--- - **Specific Error Messages**: Guidance for unsupported cases
--- - **Extensible Design**: Easy to add new solving phases
--- -/
-
--- -- =============================================
--- -- ADDITIONAL TESTS: FRACTIONS AND INVERSES
--- -- =============================================
 
 -- section FractionArithmeticTests
 
@@ -1010,7 +446,7 @@ lemma test_nested_parens_2 : (((1 : ENNReal) * 2) * 3) * 4 = 24 := by solve_as_r
 
 
 
--- lemma test_nested_parens_3 : ((((5 : ENNReal) + 1) + 2) + 3) = 11 := by solve_as_real
+lemma test_nested_parens_3 : ((((5 : ENNReal) + 1) + 2) + 3) = 11 := by solve_as_real
 
 -- -- Complex parentheses
 -- lemma test_complex_parens_1 : ((2 : ENNReal) + 3) * ((4 + 5) + 6) = 75 := by ennreal_arith_advanced
@@ -1190,7 +626,7 @@ lemma test_nested_parens_2 : (((1 : ENNReal) * 2) * 3) * 4 = 24 := by solve_as_r
 
 -- lemma test_multi_div_2 : (30 : ENNReal) / (6 / 1) = 5 := by ennreal_arith_advanced
 
--- lemma test_multi_div_3 : ((40 : ENNReal) / 8) + ((50 / 10)) = 10 := by ennreal_arith_advanced
+lemma test_multi_div_3 : ((40 : ENNReal) / 8) + ((50 / 10)) = 10 := by solve_as_real
 
 -- -- Chain of self-divisions
 -- lemma test_self_div_chain_1 : (7 : ENNReal) / 7 / 1 = 1 := by ennreal_arith_advanced
@@ -1209,7 +645,7 @@ lemma test_nested_parens_2 : (((1 : ENNReal) * 2) * 3) * 4 = 24 := by solve_as_r
 -- -- Inverse stress patterns (working with current solver)
 -- lemma test_inverse_stress_1 : (3 : ENNReal)⁻¹ + (3 : ENNReal)⁻¹ = 2 * (3 : ENNReal)⁻¹ := by ennreal_arith_advanced
 
--- lemma test_inverse_stress_2 : (4 : ENNReal)⁻¹ + (4 : ENNReal)⁻¹ + (4 : ENNReal)⁻¹ = 3 * (4 : ENNReal)⁻¹ := by ring_nf
+lemma test_inverse_stress_2 : (4 : ENNReal)⁻¹ + (4 : ENNReal)⁻¹ + (4 : ENNReal)⁻¹ = 3 * (4 : ENNReal)⁻¹ := by solve_as_real
 
 -- -- Large number fraction stress
 -- lemma test_large_fraction_1 : (1000 : ENNReal) / 100 = 10 := by ennreal_arith_advanced
@@ -1222,22 +658,17 @@ lemma test_nested_parens_2 : (((1 : ENNReal) * 2) * 3) * 4 = 24 := by solve_as_r
 
 
 
-
--- -- Complex fraction chains
--- lemma test_fraction_chain_1 : (12 : ENNReal) / 3 / 2 = 2 := by
---   solve_as_real
-
--- lemma test_fraction_chain_1_real : (12 : ENNReal) / 3 / 2 = 2 := by solve_as_real
+lemma test_fraction_chain_1_real : (12 : ENNReal) / 3 / 2 = 2 := by solve_as_real
 
 -- -- Additional tests demonstrating solve_as_real capabilities
--- lemma test_solve_as_real_1 : (100 : ENNReal) / 10 = 10 := by solve_as_real
+lemma test_solve_as_real_1 : (100 : ENNReal) / 10 = 10 := by solve_as_real
 
--- lemma test_solve_as_real_2 : (200 : ENNReal) / 50 * 2 = 8 := by solve_as_real
+lemma test_solve_as_real_2 : (200 : ENNReal) / 50 * 2 = 8 := by solve_as_real
 
--- lemma test_solve_as_real_3 : (1500 : ENNReal) / 300 / 5 = 1 := by solve_as_real
+lemma test_solve_as_real_3 : (1500 : ENNReal) / 300 / 5 = 1 := by solve_as_real
 
 -- -- Comprehensive inverse tests with solve_as_real
--- lemma test_solve_as_real_inverse_1 : (5 : ENNReal)⁻¹ = 1 / 5 := by solve_as_real
+
 
 -- lemma test_solve_as_real_inverse_2 : (10 : ENNReal)⁻¹ * 10 = 1 := by solve_as_real
 
@@ -1313,13 +744,11 @@ lemma test_nested_parens_2 : (((1 : ENNReal) * 2) * 3) * 4 = 24 := by solve_as_r
 --   . norm_num
 
 -- -- Maximum stress within solver capabilities
--- lemma test_max_stress_1 : ((((2 : ENNReal) / 1) + 3) / 1 + 4) / 1 = 9 := by ennreal_arith_advanced
+lemma test_max_stress_1 : ((((2 : ENNReal) / 1) + 3) / 1 + 4) / 1 = 9 := by solve_as_real
 
--- lemma test_max_stress_2 : (((5 : ENNReal)⁻¹ + (5 : ENNReal)⁻¹) + 0) + 0 = 2 * (5 : ENNReal)⁻¹ := by ennreal_arith_advanced
+lemma test_max_stress_2 : (((5 : ENNReal)⁻¹ + (5 : ENNReal)⁻¹) + 0) + 0 = 2 * (5 : ENNReal)⁻¹ := by solve_as_real
 
--- lemma test_max_stress_3 : ((10 : ENNReal) / 10 + 20 / 20 + 30 / 30) * 2 = 6 := by
---   rw [ENNReal.div_self, ENNReal.div_self, ENNReal.div_self]
---   ring_nf
---   all_goals norm_num
+lemma test_max_stress_3 : ((10 : ENNReal) / 10 + 20 / 20 + 30 / 30) * 2 = 6 := by
+  solve_as_real
 
 -- end FractionInverseStressTests
