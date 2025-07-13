@@ -195,7 +195,7 @@ def ennrealToReal : TacticM Unit := do
   -- Phase 2: Apply Real arithmetic conversion lemmas using bottom-up traversal
   -- Keep applying lifting rules until no more progress is made
   let maxIterations := 20
-  for i in List.range maxIterations do
+  for _ in List.range maxIterations do
     let goalBefore ← getMainGoal
     let goalTypeBefore ← goalBefore.getType
 
@@ -209,23 +209,23 @@ def ennrealToReal : TacticM Unit := do
     let mut progressMade := false
     for (name, tactic) in liftingRules do
       try
-        logInfo m!"Trying {name} lifting rule on: {goalTypeBefore}"
+        -- logInfo m!"Trying {name} lifting rule on: {goalTypeBefore}"
         evalTactic tactic
         let goalAfter ← getMainGoal
         let goalTypeAfter ← goalAfter.getType
         -- Check if the goal actually changed
         if !(← isDefEq goalTypeBefore goalTypeAfter) then
           progressMade := true
-          logInfo m!"Applied {name} lifting rule successfully, new goal: {← ppExpr goalTypeAfter}"
+          -- logInfo m!"Applied {name} lifting rule successfully, new goal: {← ppExpr goalTypeAfter}"
         -- else
           -- logInfo m!"{name} lifting rule made no change"
-      catch e =>
+      catch _ =>
         -- logInfo m!"{name} lifting rule failed: {e.toMessageData}"
         continue
 
     -- If no progress was made in this iteration, we're done
     if !progressMade then
-      logInfo s!"Lifting complete after {i + 1} iterations"
+      -- logInfo s!"Lifting complete after {i + 1} iterations"
       break
 
   -- Phase 3: Apply final div lifting and solve in Real arithmetic
@@ -238,7 +238,9 @@ def ennrealToReal : TacticM Unit := do
   -- Phase 4: Solve remaining goals
   let solvingTactics := [
     ← `(tactic| norm_num),
+    ← `(tactic| (simp [div_eq_iff]; norm_num)),
     ← `(tactic| (ring_nf; norm_num)),
+    ← `(tactic| (field_simp; norm_num)),
     ← `(tactic| (simp only [ENNReal.coe_div, ENNReal.coe_mul]; norm_num)),
     -- Handle any remaining positivity/finiteness goals automatically
     ← `(tactic| (all_goals norm_num))
@@ -253,11 +255,11 @@ def ennrealToReal : TacticM Unit := do
       continue
 
 /--
-Syntax for the ennreal_to_real tactic
+Syntax for the solve_as_real tactic
 -/
-syntax "ennreal_to_real" : tactic
+syntax "solve_as_real" : tactic
 
-elab_rules : tactic | `(tactic| ennreal_to_real) => do
+elab_rules : tactic | `(tactic| solve_as_real) => do
   ennrealToReal
 
 
@@ -272,7 +274,7 @@ lemma test_large_fraction_3_manual : (5000 : ENNReal) / 1000 * 3 = 15 := by
 
 
 lemma test_large_fraction_3 : (5000 : ENNReal) / 1000 * 3 = 15 := by
-  ennreal_to_real
+  solve_as_real
 
 
 -- =============================================
@@ -1095,19 +1097,7 @@ lemma test_inverse_stress_2 : (4 : ENNReal)⁻¹ + (4 : ENNReal)⁻¹ + (4 : ENN
 lemma test_large_fraction_1 : (1000 : ENNReal) / 100 = 10 := by ennreal_arith_advanced
 
 lemma test_large_fraction_2 : (2000 : ENNReal) / 200 + 5 = 15 := by
-  have: ((2000 : ENNReal) / 200 + 5 ).toReal = 15 := by
-    rw [toReal_add]
-    rw [toReal_div]
-    norm_num
-    · exact div_ne_top (by norm_num) (by norm_num)
-    · norm_num
-  rw [eq_as_real]
-  exact this
-  refine add_ne_top.mpr ?_
-  apply And.intro
-  . exact div_ne_top (by norm_num) (by norm_num)
-  . norm_num
-  . norm_num
+  solve_as_real
 
 
 
@@ -1126,38 +1116,23 @@ lemma test_fraction_chain_1 : (12 : ENNReal) / 3 / 2 = 2 := by
   · norm_num
   · norm_num
 
+lemma test_fraction_chain_1_real : (12 : ENNReal) / 3 / 2 = 2 := by
+  solve_as_real
+
 
 lemma test_fraction_chain_2 : (24 : ENNReal) / 4 / 3 = 2 := by
-  rw [div_div]
-  · norm_num
-    rw [div_eq_iff]
-    · norm_num
-    · norm_num
-    · norm_num
-  · norm_num
-  · norm_num
+  solve_as_real
 
 
 lemma test_fraction_chain_3 : (60 : ENNReal) / 6 / 5 = 2 := by
-  rw [div_div]
-  · norm_num
-    rw [div_eq_iff]
-    · norm_num
-    · norm_num
-    · norm_num
-  · norm_num
-  · norm_num
+  solve_as_real
 
 
 -- Stress test with many operations
 lemma test_many_ops_1 : (2 : ENNReal) / 1 + 3 / 1 + 4 / 1 + 5 / 1 = 14 := by ennreal_arith_advanced
 
 lemma test_many_ops_2 : (10 : ENNReal) / 2 + 15 / 3 + 20 / 4 + 25 / 5 = 20 := by
-  repeat rw [add_assoc]
-  repeat
-    rw [add_mixed_denom]
-  rw [div_eq_iff]
-  repeat norm_num
+  solve_as_real
 
 
 
