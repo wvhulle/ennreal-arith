@@ -3,3 +3,6 @@
 .aider*
 .mcp.json
 claude-auto-resume.sh
+.env
+.github/copilot-instructions.md
+.vscode/settings.json
