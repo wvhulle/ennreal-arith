@@ -105,7 +105,7 @@ partial def findENNRealLiterals (e : Expr) : Array Expr := Id.run do
   return literals
 
 
-elab "solve_as_real" : tactic => do
+elab "eq_as_reals" : tactic => do
   let goal ← getMainGoal
   let goalType ← goal.getType
   let literals := findENNRealLiterals goalType
