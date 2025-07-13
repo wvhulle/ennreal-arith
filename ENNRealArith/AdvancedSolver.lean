@@ -2,7 +2,9 @@ import ENNRealArith.ArithmeticCore
 import ENNRealArith.ImprovedSolver
 import Lean.Meta.Tactic.Simp
 import Lean.Elab.Tactic.Basic
-
+import Lean.Expr
+import Lean.PrettyPrinter
+import Qq
 /-!
 # Advanced ENNReal Arithmetic Solver
 
@@ -18,7 +20,7 @@ This module implements the next steps for production use:
 - Enhanced error recovery and fallback mechanisms
 -/
 
-open Lean Meta Elab Tactic ENNReal
+open Lean Meta Elab Tactic ENNReal Qq
 
 namespace ENNRealArith.Advanced
 
@@ -119,8 +121,158 @@ lemma eq_as_real {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
   · intro h
     rw [← ENNReal.ofReal_toReal ha, ← ENNReal.ofReal_toReal hb, h]
 
+/--
+Recursively find all ENNReal expressions in a term that look like finite literals.
+Specifically looks for patterns like: @OfNat.ofNat ℝ≥0∞ 5000 instOfNatAtLeastTwo : ℝ≥0∞
+-/
+partial def findENNRealLiterals (e : Expr) : Array Expr := Id.run do
+  let mut literals := #[]
+
+  -- Main pattern: @OfNat.ofNat ℝ≥0∞ n instance : ℝ≥0∞
+  if e.isAppOfArity ``OfNat.ofNat 3 then
+    let args := e.getAppArgs
+    if args.size >= 3 then
+      let typeArg := args[0]!  -- Should be ℝ≥0∞
+      let numArg := args[1]!   -- Should be the number literal
+      -- Check if the type is ENNReal and the number is a literal
+      if typeArg.isAppOf ``ENNReal && numArg.isLit then
+        literals := literals.push e
+
+  -- Fallback: Check for Coe.coe applications to ENNReal
+  if e.isAppOfArity ``Coe.coe 3 then
+    let args := e.getAppArgs
+    if args.size >= 3 then
+      let target := args[1]!
+      if target.isAppOf ``ENNReal then
+        let source := args[2]!
+        -- Check if it's a natural number literal
+        if source.isLit then
+          literals := literals.push e
+
+  -- Recursively search subexpressions
+  for arg in e.getAppArgs do
+    literals := literals ++ findENNRealLiterals arg
+
+  return literals
+
+/--
+Tactic that automatically converts finite ENNReal values to Real using ofReal_toReal.
+This automates the pattern from test_large_fraction_3.
+
+Strategy:
+1. Find all ENNReal literals in the goal
+2. Convert each one using ofReal_toReal with automated finiteness proofs
+3. Apply Real arithmetic conversion lemmas in precedence order
+4. Solve the resulting equality in Real numbers
+-/
+def ennrealToReal : TacticM Unit := do
+  -- Phase 1: Get the goal and find all ENNReal literals
+  let goal ← getMainGoal
+  let goalType ← goal.getType
+  let literals := findENNRealLiterals goalType
+  if literals.isEmpty then
+    logInfo "No ENNReal literals found in the goal."
+    return ()
+  -- Phase 2: Convert each found literal using syntax quotation
+  for lit in literals do
+    -- logInfo s!"Converting literal {← ppExpr lit} to Real"
+    -- Apply ofReal_toReal to this specific literal using syntax embedding
+    try
+      -- Convert the Expr to Syntax for embedding in quotations
+      let litSyntax ←  lit.toSyntax
+      -- Create the tactic with the specific literal embedded
+      let tactic ← `(tactic| rw [← ENNReal.ofReal_toReal (by norm_num : $litSyntax ≠ ⊤)])
+      -- logInfo s!"Attempting rewrite for {← ppExpr lit} with syntax {litSyntax}"
+      evalTactic tactic
+      -- logInfo s!"Rewrite successful for {← ppExpr lit}"
+    catch e =>
+      -- If syntax embedding fails, log and continue
+      logInfo m!"Failed to convert literal {← ppExpr lit}: {e.toMessageData}"
+      continue
 
 
+
+  -- Phase 2: Apply Real arithmetic conversion lemmas using bottom-up traversal
+  -- Keep applying lifting rules until no more progress is made
+  let maxIterations := 20
+  for i in List.range maxIterations do
+    let goalBefore ← getMainGoal
+    let goalTypeBefore ← goalBefore.getType
+
+    -- Try each lifting rule once per iteration
+    let liftingRules := [
+      ("div", ← `(tactic| (try rw [← ENNReal.ofReal_div_of_pos] <;> norm_num))),
+      ("mul", ← `(tactic| (try rw [← ENNReal.ofReal_mul]))),
+      ("add", ← `(tactic| (try rw [← ENNReal.ofReal_add])))
+    ]
+
+    let mut progressMade := false
+    for (name, tactic) in liftingRules do
+      try
+        logInfo m!"Trying {name} lifting rule on: {goalTypeBefore}"
+        evalTactic tactic
+        let goalAfter ← getMainGoal
+        let goalTypeAfter ← goalAfter.getType
+        -- Check if the goal actually changed
+        if !(← isDefEq goalTypeBefore goalTypeAfter) then
+          progressMade := true
+          logInfo m!"Applied {name} lifting rule successfully, new goal: {← ppExpr goalTypeAfter}"
+        -- else
+          -- logInfo m!"{name} lifting rule made no change"
+      catch e =>
+        -- logInfo m!"{name} lifting rule failed: {e.toMessageData}"
+        continue
+
+    -- If no progress was made in this iteration, we're done
+    if !progressMade then
+      logInfo s!"Lifting complete after {i + 1} iterations"
+      break
+
+  -- Phase 3: Apply final div lifting and solve in Real arithmetic
+  try
+    evalTactic (← `(tactic| rw [← ENNReal.ofReal_div_of_pos] <;> norm_num))
+    let goals ← getUnsolvedGoals
+    if goals.isEmpty then return
+  catch _ => pure ()
+
+  -- Phase 4: Solve remaining goals
+  let solvingTactics := [
+    ← `(tactic| norm_num),
+    ← `(tactic| (ring_nf; norm_num)),
+    ← `(tactic| (simp only [ENNReal.coe_div, ENNReal.coe_mul]; norm_num)),
+    -- Handle any remaining positivity/finiteness goals automatically
+    ← `(tactic| (all_goals norm_num))
+  ]
+
+  for tactic in solvingTactics do
+    try
+      evalTactic tactic
+      let goals ← getUnsolvedGoals
+      if goals.isEmpty then return
+    catch _ =>
+      continue
+
+/--
+Syntax for the ennreal_to_real tactic
+-/
+syntax "ennreal_to_real" : tactic
+
+elab_rules : tactic | `(tactic| ennreal_to_real) => do
+  ennrealToReal
+
+
+lemma test_large_fraction_3_manual : (5000 : ENNReal) / 1000 * 3 = 15 := by
+  rw [← ENNReal.ofReal_toReal (by norm_num: (5000 : ENNReal) ≠ ⊤)]
+  rw [← ENNReal.ofReal_toReal (by norm_num : (1000 : ENNReal) ≠ ⊤)]
+  rw [← ENNReal.ofReal_toReal (by norm_num : (3 : ENNReal) ≠ ⊤)]
+  rw [← ENNReal.ofReal_toReal (by norm_num : (15 : ENNReal) ≠ ⊤)]
+  rw [← ENNReal.ofReal_div_of_pos]
+  · norm_num
+  · norm_num
+
+
+lemma test_large_fraction_3 : (5000 : ENNReal) / 1000 * 3 = 15 := by
+  ennreal_to_real
 
 
 -- =============================================
@@ -959,13 +1111,9 @@ lemma test_large_fraction_2 : (2000 : ENNReal) / 200 + 5 = 15 := by
 
 
 
-lemma test_large_fraction_3 : (5000 : ENNReal) / 1000 * 3 = 15 := by
-  rw [mul_comm]
-  rw [<- ENNReal.ofReal_toReal (show 5000 ≠ ⊤ from by norm_num) ]
-  rw [<- ENNReal.ofReal_toReal (show 1000 ≠ ⊤ from by norm_num) ]
-  rw [<- ENNReal.ofReal_div_of_pos]
-  norm_num
-  norm_num
+
+
+
 
 -- Complex fraction chains
 lemma test_fraction_chain_1 : (12 : ENNReal) / 3 / 2 = 2 := by
