@@ -1,6 +1,6 @@
 # Arithmetic simplification for ENNReal
 
-This library provides a convenience tactic for ENNReal (extended non-negative real) arithmetic. ENNReal appears frequently in Mathlib's probability theory and measure theory.
+ENNReal appears frequently in Mathlib's probability theory and measure theory. This library provides a convenience tactic `eq_as_reals` for ENNReal (extended non-negative real) numbers or arithmetic expressions. 
 
 ## Installation
 
@@ -32,15 +32,15 @@ Import in your Lean files:
 import ENNRealArith
 ```
 
-Use the `ennreal_arith` tactic which combines multiple simplification strategies:
+Use the `eq_as_reals` tactic to prove equality of probabilities (`ENNReal` in Mathlib4), lifted into the real numbers:
 
 ```lean
-example : (↑2 : ENNReal) * 1 + ↑3 * 0 + ↑5 = ↑7 := by ennreal_arith
+example : (↑2 : ENNReal) * 1 + ↑3 * 0 + ↑5 = ↑7 := by eq_as_reals
 
-example (a : ℕ) (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by ennreal_arith
+example (a : ℕ) (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by eq_as_reals
 
 example (a b c : ℕ) (hc : c ≠ 0) : 
-  (↑(a * c) : ENNReal) / (↑(b * c)) = ↑a / ↑b := by ennreal_arith
+  (↑(a * c) : ENNReal) / (↑(b * c)) = ↑a / ↑b := by eq_as_reals
 ```
 
 ## Testing
