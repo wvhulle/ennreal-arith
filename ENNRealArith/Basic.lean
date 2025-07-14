@@ -11,6 +11,7 @@ open Lean Meta Elab Tactic ENNReal Qq
 
 initialize
   registerTraceClass `ENNRealArith
+  registerTraceClass `ENNRealArith.search
   registerTraceClass `ENNRealArith.conversion
   registerTraceClass `ENNRealArith.lifting
   registerTraceClass `ENNRealArith.debug
@@ -75,12 +76,48 @@ def isReadyForFinalComputation (goalType : Expr) : TacticM Bool := do
 
   return lhsReady && rhsReady
 
+
+def finiteProof (e: Expr) : MetaM (Option Expr) := do
+  if e.isFVar then
+    let ctx ← getLCtx
+    ctx.findDeclM? fun decl => do
+      if !decl.isImplementationDetail then
+        let declType := decl.type
+        -- Check if this is a proof that our variable is not ⊤
+        if declType.isAppOfArity ``Ne 3 then
+          let args := declType.getAppArgs
+          if args.size >= 3 && args[1]! == e && args[2]!.isAppOfArity ``Top.top 2 then
+            return some decl.toExpr
+        -- Also check for ≠ ⊤ pattern
+        if declType.isAppOfArity ``Not 1 then
+          let eqExpr := declType.getAppArgs[0]!
+          if eqExpr.isAppOfArity ``Eq 3 then
+            let eqArgs := eqExpr.getAppArgs
+            if eqArgs.size >= 3 && eqArgs[1]! == e && eqArgs[2]!.isAppOfArity ``Top.top 2 then
+              return some decl.toExpr
+      return none
+  else
+    return none
+
+def isFinite (e : Expr) : MetaM Bool := do
+  if e.isFVar then
+    let type ← inferType e
+    if type.isAppOf ``ENNReal then
+      let proof ← finiteProof e
+      return proof.isSome
+  return false
 /-!
 Recursively find all ENNReal expressions in a term that look like finite literals.
 Specifically looks for patterns like: @OfNat.ofNat ℝ≥0∞ 5000 instOfNatAtLeastTwo : ℝ≥0∞
 -/
-partial def findENNRealLiterals (e : Expr) : Array Expr := Id.run do
+partial def findENNVarExpr (e : Expr) : MetaM (Array Expr) := do
   let mut literals := #[]
+
+  -- Check if e is a free variable of type ENNReal with a finiteness proof
+  if e.isFVar then
+    let isF ← isFinite e
+    if isF then
+      literals := literals.push e
 
   if e.isAppOfArity ``OfNat.ofNat 3 then
     let args := e.getAppArgs
@@ -99,79 +136,171 @@ partial def findENNRealLiterals (e : Expr) : Array Expr := Id.run do
         if source.isLit then
           literals := literals.push e
 
-  for arg in e.getAppArgs do
-    literals := literals ++ findENNRealLiterals arg
+  -- Recursively check subexpressions
+  match e with
+  | .app f a =>
+    literals := literals ++ (← findENNVarExpr f)
+    literals := literals ++ (← findENNVarExpr a)
+  | .lam _ _ b _ => literals := literals ++ (← findENNVarExpr b)
+  | .forallE _ _ b _ => literals := literals ++ (← findENNVarExpr b)
+  | .letE _ _ v b _ =>
+    literals := literals ++ (← findENNVarExpr v)
+    literals := literals ++ (← findENNVarExpr b)
+  | .mdata _ b => literals := literals ++ (← findENNVarExpr b)
+  | .proj _ _ b => literals := literals ++ (← findENNVarExpr b)
+  | _ => pure ()
+
+  if literals.isEmpty then
+    trace[ENNRealArith.search] "No ENNReal literals found in expression: {e}"
+
+  else
+    trace[ENNRealArith.search] m!"Found literals: {literals}"
 
   return literals
 
 
 elab "eq_as_reals" : tactic => do
-  let goal ← getMainGoal
-  let goalType ← goal.getType
-  let literals := findENNRealLiterals goalType
-  if literals.isEmpty then
-    trace[ENNRealArith.info] "No ENNReal literals found in the goal."
-    return ()
+  withMainContext do
+    let goal ← getMainGoal
+    let goalType ← goal.getType
+
+    -- Check if the goal is already reflexive
+    if goalType.isAppOf ``Eq && goalType.getAppArgs.size >= 3 then
+      let lhs := goalType.getAppArgs[1]!
+      let rhs := goalType.getAppArgs[2]!
+      if lhs == rhs then
+        -- Goal is reflexive, solve it directly
+        evalTactic (← `(tactic| rfl))
+        return
+
+    let enn_expressions <- findENNVarExpr goalType
+    if enn_expressions.isEmpty then
+      trace[ENNRealArith.info] "No ENNReal literals found in the goal."
+      return ()
 
 
-  for lit in literals do
-    try
-      let litSyntax ←  lit.toSyntax
-      evalTactic (← `(tactic| rw [← ENNReal.ofReal_toReal (by norm_num : $litSyntax ≠ ⊤)]))
-      evalTactic (← `(tactic| simp only [ENNReal.toReal_ofNat]))
-      trace[ENNRealArith.conversion] m!"Converted {lit} to Real: {← getMainGoal}"
-    catch _ =>
-      trace[ENNRealArith.conversion] m!"Failed to convert literal {lit}, skipping"
-      continue
-
-  trace[conversion] m!"Starting lifting phases: {← getMainGoal}"
-  let maxIterations := 10
-  for _ in List.range maxIterations do
-
-
-    let liftingPhases := [
-      ← `(tactic| (rw [← ENNReal.ofReal_inv_of_pos (by norm_num : (0 : ℝ) < _)])),
-      ← `(tactic| (rw [← ENNReal.ofReal_div_of_pos (by norm_num : (0 : ℝ) < _)])),
-      ← `(tactic| (rw [← ENNReal.ofReal_mul])),
-      ← `(tactic| (rw [← ENNReal.ofReal_add])),
-      ← `(tactic| (rw [← ENNReal.ofReal_one])),
-      ← `(tactic| (rw [← ENNReal.ofReal_zero])),
-    ]
-
-    for phase in liftingPhases do
-      let goal ← getMainGoal
-      let goalTypeBefore ← goal.getType
-      let ofRealCountBefore := countOfRealOccurrences goalTypeBefore
+    -- Process each ENNReal expression only once
+    for enn_expr in enn_expressions do
       try
-        evalTactic phase
-        let goalAfter ← getMainGoal
-        let goalTypeAfter ← goalAfter.getType
-        let ofRealCountAfter := countOfRealOccurrences goalTypeAfter
-        trace[ENNRealArith.lifting] "Applied phase ({ofRealCountBefore}→{ofRealCountAfter}): {goalAfter}"
+        let finiteness_proof ← finiteProof enn_expr -- find a proof that enn_expr is not ⊤
+        let enn_syntax ← enn_expr.toSyntax
 
-        if ← isReadyForFinalComputation goalTypeAfter then
-          trace[ENNRealArith.lifting] "Ready for final computation"
-          break
-      catch _ =>
-        trace[ENNRealArith.lifting] "Phase failed, continuing"
+        match finiteness_proof with
+        | some proof =>
+          trace[ENNRealArith.conversion] m!"Found finiteness proof for {enn_expr}: {proof}"
+          let proofSyntax ← proof.toSyntax
+          evalTactic (← `(tactic| rw [← ENNReal.ofReal_toReal $proofSyntax]))
+        | none =>
+          trace[ENNRealArith.conversion] m!"No finiteness proof found for {enn_expr}, trying norm_num"
+          evalTactic (← `(tactic| rw [← ENNReal.ofReal_toReal (by norm_num : $enn_syntax ≠ ⊤)]))
+
+        trace[ENNRealArith.conversion] m!"Lifted ENN expression {enn_expr} to Real"
+      catch e =>
+        trace[ENNRealArith.conversion] m!"Failed to convert ENN expression {enn_expr} to Real because {e.toMessageData}, skipping"
         continue
-    let goalAfter ← getMainGoal
-    let goalTypeAfter ← goalAfter.getType
-    if ← isReadyForFinalComputation goalTypeAfter then
-          trace[ENNRealArith.lifting] "Ready for final computation after iteration"
+
+
+
+
+
+    trace[conversion] m!"Starting lifting phases: {← getMainGoal}"
+    let maxIterations := 10
+    let mut previousGoalType : Option Expr := none
+    for _ in List.range maxIterations do
+
+
+      let liftingPhases := [
+        ← `(tactic| (rw [← ENNReal.ofReal_inv_of_pos (by norm_num : (0 : ℝ) < _)])),
+        ← `(tactic| (rw [← ENNReal.ofReal_div_of_pos (by norm_num : (0 : ℝ) < _)])),
+        ← `(tactic| (rw [← ENNReal.ofReal_mul])),
+        ← `(tactic| (rw [← ENNReal.ofReal_add])),
+        ← `(tactic| (rw [← ENNReal.ofReal_one])),
+        ← `(tactic| (rw [← ENNReal.ofReal_zero])),
+      ]
+
+      for phase in liftingPhases do
+        let goal ← getMainGoal
+        let goalTypeBefore ← goal.getType
+        let ofRealCountBefore := countOfRealOccurrences goalTypeBefore
+        try
+          evalTactic phase
+
+          -- Simplify nested ofReal/toReal expressions after each phase
+          try
+            evalTactic (← `(tactic| simp only [ENNReal.toReal_ofReal ENNReal.toReal_nonneg]))
+          catch _ =>
+            pure ()
+
+          let goalAfter ← getMainGoal
+          let goalTypeAfter ← goalAfter.getType
+          let ofRealCountAfter := countOfRealOccurrences goalTypeAfter
+          trace[ENNRealArith.lifting] m!"Applied phase {phase}, converted {goalTypeBefore} to {goalTypeAfter}, reduced {ofRealCountBefore} to {ofRealCountAfter} occurrences of ENNReal.ofReal"
+
+          if ← isReadyForFinalComputation goalTypeAfter then
+            trace[ENNRealArith.lifting] "Ready for final computation"
+            break
+        catch _ =>
+          trace[ENNRealArith.lifting] m!"Phase {phase} failed, continuing"
+          continue
+      let goalAfter ← getMainGoal
+      let goalTypeAfter ← goalAfter.getType
+
+      -- Check if we made any progress in this iteration
+      match previousGoalType with
+      | some prevType =>
+        if prevType == goalTypeAfter then
+          trace[ENNRealArith.lifting] "No progress made in this iteration, stopping"
           break
+      | none => pure ()
 
-  trace[ENNRealArith.final] "Starting final computation phase"
+      previousGoalType := some goalTypeAfter
 
-  try
-    evalTactic (← `(tactic| all_goals norm_num))
-    let goals ← getUnsolvedGoals
-    if goals.isEmpty then
-      trace[ENNRealArith.final] "Successfully solved with norm_num"
-      return
-  catch _ =>
-    trace[ENNRealArith.final] "Final computation failed"
-    pure ()
+      if ← isReadyForFinalComputation goalTypeAfter then
+            trace[ENNRealArith.lifting] m!"Ready for final computation after iteration with goal {goalAfter}"
+            break
+
+    trace[ENNRealArith.final] "Starting final computation phase"
+
+    -- Try to handle ENNReal.ofReal equality
+    let goal ← getMainGoal
+    let goalType ← goal.getType
+    trace[ENNRealArith.final] m!"Checking if goal is ENNReal.ofReal equality: {goalType}"
+
+    -- Check if we have ENNReal.ofReal x = ENNReal.ofReal y
+    if goalType.isAppOf ``Eq && goalType.getAppArgs.size >= 3 then
+      let lhs := goalType.getAppArgs[1]!
+      let rhs := goalType.getAppArgs[2]!
+
+      if lhs.isAppOf ``ENNReal.ofReal && rhs.isAppOf ``ENNReal.ofReal then
+        trace[ENNRealArith.final] "Found ENNReal.ofReal equality, converting to Real"
+        try
+          -- Use congr to reduce to Real equality
+          evalTactic (← `(tactic| congr 1))
+
+          -- Prove non-negativity of toReal expressions
+          evalTactic (← `(tactic| all_goals (first | apply ENNReal.toReal_nonneg | skip)))
+          evalTactic (← `(tactic| simp only [ENNReal.toReal_ofReal ENNReal.toReal_nonneg]))
+          let goal ← getMainGoal
+          trace[ENNRealArith.final] m!"Applied congr and proved non-negativity, now solving Real equality for {goal}"
+
+        catch e =>
+          trace[ENNRealArith.final] m!"Could not handle ofReal equality: {e.toMessageData}"
+
+    try
+      let goal ← getMainGoal
+      trace[ENNRealArith.final] m!"Final computation on goal with norm_num:  {goal}"
+      evalTactic (← `(tactic| all_goals norm_num))
+      let remainingGoals ← getUnsolvedGoals
+      if !remainingGoals.isEmpty then
+        trace[ENNRealArith.final] "norm_num left unsolved goals, trying ring"
+        evalTactic (← `(tactic| all_goals ring_nf))
+      let goals ← getUnsolvedGoals
+      if goals.isEmpty then
+        trace[ENNRealArith.final] "Successfully solved with norm_num/ring"
+        return
+    catch _ =>
+      trace[ENNRealArith.final] "Final computation failed"
+      pure ()
 
 
 
@@ -267,12 +396,3 @@ lemma div_eq_iff {a b c : ENNReal} {hc : c ≠ 0} {hct: c ≠ ⊤} :
     · intro h
       rw [h]
       rw [ENNReal.mul_div_cancel_right hc hct]
-
-
-lemma eq_as_real {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
-    a = b ↔ a.toReal = b.toReal := by
-  constructor
-  · intro h
-    rw [h]
-  · intro h
-    rw [← ENNReal.ofReal_toReal ha, ← ENNReal.ofReal_toReal hb, h]

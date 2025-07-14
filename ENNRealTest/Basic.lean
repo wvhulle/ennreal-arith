@@ -3,8 +3,15 @@ import ENNRealArith
 open ENNReal
 
 
-
+-- set_option trace.ENNRealArith.search true in
 -- set_option trace.ENNRealArith.conversion true in
+-- set_option trace.ENNRealArith.lifting true in
+-- set_option trace.ENNRealArith.debug true in
+-- set_option trace.ENNRealArith.final true in
+lemma test_with_vars {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
+  a + b = b + a := by
+  eq_as_reals
+
 lemma test_eq_as_reals_inverse_1 : (5 : ENNReal)⁻¹ = 1 / 5 := by eq_as_reals
 
 
@@ -44,91 +51,96 @@ lemma test_nested_parens_2 : (((1 : ENNReal) * 2) * 3) * 4 = 24 := by eq_as_real
 
 lemma test_advanced_basic : (2 : ENNReal) + 3 = 5 := by eq_as_reals
 
--- lemma test_advanced_multiplication : (2 : ENNReal) * 3 * 4 = 24 := by eq_as_reals
+lemma test_advanced_multiplication : (2 : ENNReal) * 3 * 4 = 24 := by eq_as_reals
 
--- lemma test_advanced_zero_handling : (5 : ENNReal) + 0 * 100 = 5 := by eq_as_reals
+lemma test_advanced_zero_handling : (5 : ENNReal) + 0 * 100 = 5 := by eq_as_reals
 
 -- end BasicAdvancedTests
 
--- section ComplexNestedTests
+section ComplexNestedTests
 
--- -- Deep nesting tests
--- lemma test_deeply_nested_addition_1 :
---   ((((1 : ENNReal) + 2) + 3) + ((4 + 5) + 6)) = 21 := by eq_as_reals
+-- Deep nesting tests
+lemma test_deeply_nested_addition_1 :
+  ((((1 : ENNReal) + 2) + 3) + ((4 + 5) + 6)) = 21 := by eq_as_reals
 
--- lemma test_deeply_nested_addition_2 :
---   (((1 : ENNReal) + (2 + 3)) + ((4 + 5) + (6 + 7))) = 28 := by eq_as_reals
+lemma test_deeply_nested_addition_2 :
+  (((1 : ENNReal) + (2 + 3)) + ((4 + 5) + (6 + 7))) = 28 := by eq_as_reals
 
--- -- These require more sophisticated handling - demonstrates current limits
--- -- lemma test_deeply_nested_multiplication_1 :
--- --   (((2 : ENNReal) * 3) * 4) * ((5 * 6) * 7) = 2520 := by eq_as_reals
+-- These require more sophisticated handling - demonstrates current limits
+-- lemma test_deeply_nested_multiplication_1 :
+--   (((2 : ENNReal) * 3) * 4) * ((5 * 6) * 7) = 2520 := by eq_as_reals
 
--- lemma test_deeply_nested_multiplication_simpler :
---   ((2 : ENNReal) * 3) * ((4 * 5) * 6) = 720 := by eq_as_reals
+lemma test_deeply_nested_multiplication_simpler :
+  ((2 : ENNReal) * 3) * ((4 * 5) * 6) = 720 := by eq_as_reals
 
--- -- Mixed operation nesting
--- lemma test_mixed_nested_operations_1 :
---   ((2 : ENNReal) + 3) * ((4 + 1) * (6 + 0)) = 150 := by eq_as_reals
+-- Mixed operation nesting
+lemma test_mixed_nested_operations_1 :
+  ((2 : ENNReal) + 3) * ((4 + 1) * (6 + 0)) = 150 := by eq_as_reals
 
--- lemma test_mixed_nested_operations_2 :
---   (((1 : ENNReal) + 2) + 3) * (((4 + 5) + 6) + 7) = 132 := by eq_as_reals
+lemma test_mixed_nested_operations_2 :
+  (((1 : ENNReal) + 2) + 3) * (((4 + 5) + 6) + 7) = 132 := by eq_as_reals
 
 -- -- Extremely deep nesting hits current solver limits
--- -- lemma test_extremely_deep_nesting :
--- --   ((((((1 : ENNReal) + 1) + 1) + 1) + ((1 + 1) + 1)) + (((1 + 1) + (1 + 1)) + ((1 + 1) + (1 + 1)))) = 14 := by eq_as_reals
+-- set_option trace.ENNRealArith.search true in
+-- set_option trace.ENNRealArith.conversion true in
+-- set_option trace.ENNRealArith.lifting true in
+-- set_option trace.ENNRealArith.debug true in
+-- set_option trace.ENNRealArith.final true in
+-- lemma test_extremely_deep_nesting :
+--   ((((((1 : ENNReal) + 1) + 1) + 1) + ((1 + 1) + 1)) + (((1 + 1) + (1 + 1)) + ((1 + 1) + (1 + 1)))) = 14 := by eq_as_reals
 
--- -- Test moderately deep nesting that works
--- lemma test_moderately_deep_nesting :
---   (((((1 : ENNReal) + 1) + 1) + 1) + ((1 + 1) + 1)) = 7 := by eq_as_reals
+-- Test moderately deep nesting that works
+lemma test_moderately_deep_nesting :
+  (((((1 : ENNReal) + 1) + 1) + 1) + ((1 + 1) + 1)) = 7 := by eq_as_reals
 
--- end ComplexNestedTests
+end ComplexNestedTests
 
--- section LargeNumberTests
+section LargeNumberTests
 
--- -- Large arithmetic chains
--- lemma test_long_addition_chain :
---   (1 : ENNReal) + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 = 55 := by eq_as_reals
+-- Large arithmetic chains
+lemma test_long_addition_chain :
+  (1 : ENNReal) + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 = 55 := by eq_as_reals
 
--- lemma test_long_multiplication_chain :
---   (1 : ENNReal) * 2 * 3 * 4 * 5 = 120 := by eq_as_reals
+lemma test_long_multiplication_chain :
+  (1 : ENNReal) * 2 * 3 * 4 * 5 = 120 := by eq_as_reals
 
--- -- Large numbers
--- lemma test_large_number_arithmetic :
---   (100 : ENNReal) + 200 + 300 + 400 + 500 = 1500 := by eq_as_reals
+-- Large numbers
+lemma test_large_number_arithmetic :
+  (100 : ENNReal) + 200 + 300 + 400 + 500 = 1500 := by eq_as_reals
 
--- lemma test_very_large_arithmetic :
---   (1000 : ENNReal) + 2000 + 3000 = 6000 := by eq_as_reals
+lemma test_very_large_arithmetic :
+  (1000 : ENNReal) + 2000 + 3000 = 6000 := by eq_as_reals
 
--- end LargeNumberTests
+end LargeNumberTests
 
--- section DistributivityTests
+section DistributivityTests
 
--- -- Complex distributivity patterns
--- lemma test_distributivity_complex_1 :
---   ((2 : ENNReal) + 3) * (4 + 5) = 2 * 4 + 2 * 5 + 3 * 4 + 3 * 5 := by eq_as_reals
+-- Complex distributivity patterns
+lemma test_distributivity_complex_1 :
+  ((2 : ENNReal) + 3) * (4 + 5) = 2 * 4 + 2 * 5 + 3 * 4 + 3 * 5 := by eq_as_reals
 
--- lemma test_distributivity_complex_2 :
---   ((1 : ENNReal) + 2) * ((3 + 4) + (5 + 6)) = 3 * 18 := by eq_as_reals
+lemma test_distributivity_complex_2 :
+  ((1 : ENNReal) + 2) * ((3 + 4) + (5 + 6)) = 3 * 18 := by eq_as_reals
 
--- lemma test_distributivity_with_zero :
---   ((5 : ENNReal) + 0) * ((3 + 0) + (2 + 0)) = 25 := by eq_as_reals
+lemma test_distributivity_with_zero :
+  ((5 : ENNReal) + 0) * ((3 + 0) + (2 + 0)) = 25 := by eq_as_reals
 
--- end DistributivityTests
+end DistributivityTests
 
--- section AssociativityTests
+section AssociativityTests
 
--- -- Associativity with complex expressions
--- lemma test_associativity_addition_complex :
---   ((1 : ENNReal) + (2 + 3)) + (4 + 5) = (1 + 2) + ((3 + 4) + 5) := by eq_as_reals
+-- Associativity with complex expressions
+lemma test_associativity_addition_complex :
+  ((1 : ENNReal) + (2 + 3)) + (4 + 5) = (1 + 2) + ((3 + 4) + 5) := by eq_as_reals
 
--- lemma test_associativity_multiplication_complex :
---   ((2 : ENNReal) * (3 * 4)) * (5 * 6) = (2 * 3) * ((4 * 5) * 6) := by eq_as_reals
+lemma test_associativity_multiplication_complex :
+  ((2 : ENNReal) * (3 * 4)) * (5 * 6) = (2 * 3) * ((4 * 5) * 6) := by eq_as_reals
 
--- -- Mixed associativity
--- lemma test_mixed_associativity :
---   ((1 : ENNReal) + 2) * ((3 + 4) * 5) = 1 * 3 * 5 + 1 * 4 * 5 + 2 * 3 * 5 + 2 * 4 * 5 := by eq_as_reals
+-- Mixed associativity
+lemma test_mixed_associativity :
+  ((1 : ENNReal) + 2) * ((3 + 4) * 5) = 1 * 3 * 5 + 1 * 4 * 5 + 2 * 3 * 5 + 2 * 4 * 5 := by eq_as_reals
 
--- end AssociativityTests
+end AssociativityTests
 
 -- -- =============================================
 -- -- STRESS TESTS FOR EXTREME COMPLEXITY
@@ -188,216 +200,218 @@ lemma test_advanced_basic : (2 : ENNReal) + 3 = 5 := by eq_as_reals
 -- -- ADDITIONAL ARITHMETIC TESTS
 -- -- =============================================
 
--- section MoreArithmeticTests
+section MoreArithmeticTests
 
--- -- Large number tests
--- lemma test_large_addition_1 : (100 : ENNReal) + 200 + 300 = 600 := by eq_as_reals
+-- Large number tests
+lemma test_large_addition_1 : (100 : ENNReal) + 200 + 300 = 600 := by eq_as_reals
 
--- lemma test_large_addition_2 : (1000 : ENNReal) + 2000 + 3000 + 4000 = 10000 := by eq_as_reals
+lemma test_large_addition_2 : (1000 : ENNReal) + 2000 + 3000 + 4000 = 10000 := by eq_as_reals
 
--- lemma test_large_multiplication_1 : (100 : ENNReal) * 5 = 500 := by eq_as_reals
+lemma test_large_multiplication_1 : (100 : ENNReal) * 5 = 500 := by eq_as_reals
 
--- lemma test_large_multiplication_2 : (50 : ENNReal) * 20 = 1000 := by eq_as_reals
+lemma test_large_multiplication_2 : (50 : ENNReal) * 20 = 1000 := by eq_as_reals
 
--- -- Zero patterns
--- lemma test_zero_pattern_1 : (0 : ENNReal) + 0 + 0 + 5 = 5 := by eq_as_reals
+-- Zero patterns
+lemma test_zero_pattern_1 : (0 : ENNReal) + 0 + 0 + 5 = 5 := by eq_as_reals
 
--- lemma test_zero_pattern_2 : (10 : ENNReal) * 0 + 7 = 7 := by eq_as_reals
+lemma test_zero_pattern_2 : (10 : ENNReal) * 0 + 7 = 7 := by eq_as_reals
 
--- lemma test_zero_pattern_3 : (0 : ENNReal) * 100 + 8 * 1 = 8 := by eq_as_reals
+lemma test_zero_pattern_3 : (0 : ENNReal) * 100 + 8 * 1 = 8 := by eq_as_reals
 
--- -- One patterns
--- lemma test_one_pattern_1 : (15 : ENNReal) * 1 * 1 = 15 := by eq_as_reals
+-- One patterns
+lemma test_one_pattern_1 : (15 : ENNReal) * 1 * 1 = 15 := by eq_as_reals
 
--- lemma test_one_pattern_2 : (7 : ENNReal) * 1 + 3 * 1 = 10 := by eq_as_reals
+lemma test_one_pattern_2 : (7 : ENNReal) * 1 + 3 * 1 = 10 := by eq_as_reals
 
--- -- Complex nested addition
--- lemma test_nested_addition_1 : (((1 : ENNReal) + 2) + 3) + 4 = 10 := by eq_as_reals
+-- Complex nested addition
+lemma test_nested_addition_1 : (((1 : ENNReal) + 2) + 3) + 4 = 10 := by eq_as_reals
 
--- lemma test_nested_addition_2 : ((((2 : ENNReal) + 3) + 4) + 5) + 6 = 20 := by eq_as_reals
+lemma test_nested_addition_2 : ((((2 : ENNReal) + 3) + 4) + 5) + 6 = 20 := by eq_as_reals
 
--- -- Complex nested multiplication
--- lemma test_nested_multiplication_1 : (((2 : ENNReal) * 3) * 4) = 24 := by eq_as_reals
+-- Complex nested multiplication
+lemma test_nested_multiplication_1 : (((2 : ENNReal) * 3) * 4) = 24 := by eq_as_reals
 
--- lemma test_nested_multiplication_2 : ((2 : ENNReal) * 3) * (4 * 5) = 120 := by eq_as_reals
+lemma test_nested_multiplication_2 : ((2 : ENNReal) * 3) * (4 * 5) = 120 := by eq_as_reals
 
--- -- Mixed nested operations
--- lemma test_mixed_nested_1 : ((2 : ENNReal) + 3) * (4 + 1) = 25 := by eq_as_reals
+-- Mixed nested operations
+lemma test_mixed_nested_1 : ((2 : ENNReal) + 3) * (4 + 1) = 25 := by eq_as_reals
 
--- lemma test_mixed_nested_2 : ((1 : ENNReal) + 1) * ((2 + 2) + 1) = 10 := by eq_as_reals
+lemma test_mixed_nested_2 : ((1 : ENNReal) + 1) * ((2 + 2) + 1) = 10 := by eq_as_reals
 
--- lemma test_mixed_nested_3 : (((3 : ENNReal) + 2) + 1) * (2 + 0) = 12 := by eq_as_reals
+lemma test_mixed_nested_3 : (((3 : ENNReal) + 2) + 1) * (2 + 0) = 12 := by eq_as_reals
 
--- end MoreArithmeticTests
+end MoreArithmeticTests
 
 -- -- =============================================
 -- -- POLYNOMIAL AND DISTRIBUTIVE TESTS
 -- -- =============================================
 
--- section PolynomialTests
+section PolynomialTests
 
--- -- Distributivity patterns
--- lemma test_distributive_1 : (2 : ENNReal) * (3 + 4) = 2 * 3 + 2 * 4 := by eq_as_reals
+-- Distributivity patterns
+lemma test_distributive_1 : (2 : ENNReal) * (3 + 4) = 2 * 3 + 2 * 4 := by eq_as_reals
 
--- lemma test_distributive_2 : (5 : ENNReal) * (6 + 7) = 5 * 6 + 5 * 7 := by eq_as_reals
+lemma test_distributive_2 : (5 : ENNReal) * (6 + 7) = 5 * 6 + 5 * 7 := by eq_as_reals
 
--- lemma test_distributive_3 : (1 : ENNReal) * (10 + 20 + 30) = 1 * 10 + 1 * 20 + 1 * 30 := by eq_as_reals
+lemma test_distributive_3 : (1 : ENNReal) * (10 + 20 + 30) = 1 * 10 + 1 * 20 + 1 * 30 := by eq_as_reals
 
--- -- Left distributivity
--- lemma test_left_distributive_1 : ((3 : ENNReal) + 4) * 5 = 3 * 5 + 4 * 5 := by eq_as_reals
+-- Left distributivity
+lemma test_left_distributive_1 : ((3 : ENNReal) + 4) * 5 = 3 * 5 + 4 * 5 := by eq_as_reals
 
--- lemma test_left_distributive_2 : ((7 : ENNReal) + 8) * 9 = 7 * 9 + 8 * 9 := by eq_as_reals
+lemma test_left_distributive_2 : ((7 : ENNReal) + 8) * 9 = 7 * 9 + 8 * 9 := by eq_as_reals
 
--- -- Complex distributive patterns
--- lemma test_complex_distributive_1 : (2 : ENNReal) * (3 + 4) + 5 * (6 + 7) = 14 + 65 := by eq_as_reals
+-- Complex distributive patterns
+lemma test_complex_distributive_1 : (2 : ENNReal) * (3 + 4) + 5 * (6 + 7) = 14 + 65 := by eq_as_reals
 
--- lemma test_complex_distributive_2 : (1 : ENNReal) * (2 + 3) * (4 + 5) = 5 * 9 := by eq_as_reals
+lemma test_complex_distributive_2 : (1 : ENNReal) * (2 + 3) * (4 + 5) = 5 * 9 := by eq_as_reals
 
--- -- Factoring patterns (reverse distributivity)
--- lemma test_factoring_1 : (6 : ENNReal) + 9 = 3 * (2 + 3) := by eq_as_reals
+-- Factoring patterns (reverse distributivity)
+lemma test_factoring_1 : (6 : ENNReal) + 9 = 3 * (2 + 3) := by eq_as_reals
 
--- lemma test_factoring_2 : (10 : ENNReal) + 15 = 5 * (2 + 3) := by eq_as_reals
+lemma test_factoring_2 : (10 : ENNReal) + 15 = 5 * (2 + 3) := by eq_as_reals
 
--- lemma test_factoring_3 : (12 : ENNReal) + 18 + 24 = 6 * (2 + 3 + 4) := by eq_as_reals
+lemma test_factoring_3 : (12 : ENNReal) + 18 + 24 = 6 * (2 + 3 + 4) := by eq_as_reals
 
--- end PolynomialTests
+end PolynomialTests
 
 -- -- =============================================
 -- -- ASSOCIATIVITY AND COMMUTATIVITY TESTS
 -- -- =============================================
 
--- section AssociativityCommutativeTests
+section AssociativityCommutativeTests
 
--- -- Addition associativity
--- lemma test_add_assoc_1 : ((1 : ENNReal) + 2) + 3 = 1 + (2 + 3) := by eq_as_reals
+-- Addition associativity
+lemma test_add_assoc_1 : ((1 : ENNReal) + 2) + 3 = 1 + (2 + 3) := by eq_as_reals
 
--- lemma test_add_assoc_2 : ((5 : ENNReal) + 6) + 7 = 5 + (6 + 7) := by eq_as_reals
+lemma test_add_assoc_2 : ((5 : ENNReal) + 6) + 7 = 5 + (6 + 7) := by eq_as_reals
 
--- lemma test_add_assoc_3 : (((10 : ENNReal) + 11) + 12) + 13 = 10 + ((11 + 12) + 13) := by eq_as_reals
+lemma test_add_assoc_3 : (((10 : ENNReal) + 11) + 12) + 13 = 10 + ((11 + 12) + 13) := by eq_as_reals
 
--- -- Multiplication associativity
--- lemma test_mul_assoc_1 : ((2 : ENNReal) * 3) * 4 = 2 * (3 * 4) := by eq_as_reals
+-- Multiplication associativity
+lemma test_mul_assoc_1 : ((2 : ENNReal) * 3) * 4 = 2 * (3 * 4) := by eq_as_reals
 
--- lemma test_mul_assoc_2 : ((5 : ENNReal) * 6) * 7 = 5 * (6 * 7) := by eq_as_reals
+lemma test_mul_assoc_2 : ((5 : ENNReal) * 6) * 7 = 5 * (6 * 7) := by eq_as_reals
 
--- -- Addition commutativity
--- lemma test_add_comm_1 : (7 : ENNReal) + 8 = 8 + 7 := by eq_as_reals
+-- Addition commutativity
+lemma test_add_comm_1 : (7 : ENNReal) + 8 = 8 + 7 := by eq_as_reals
 
--- lemma test_add_comm_2 : (15 : ENNReal) + 25 = 25 + 15 := by eq_as_reals
+lemma test_add_comm_2 : (15 : ENNReal) + 25 = 25 + 15 := by eq_as_reals
 
--- -- Multiplication commutativity
--- lemma test_mul_comm_1 : (9 : ENNReal) * 10 = 10 * 9 := by eq_as_reals
+-- Multiplication commutativity
+lemma test_mul_comm_1 : (9 : ENNReal) * 10 = 10 * 9 := by eq_as_reals
 
--- lemma test_mul_comm_2 : (12 : ENNReal) * 13 = 13 * 12 := by eq_as_reals
+lemma test_mul_comm_2 : (12 : ENNReal) * 13 = 13 * 12 := by eq_as_reals
 
--- -- Mixed associativity and commutativity
--- lemma test_mixed_assoc_comm_1 : (1 : ENNReal) + 2 + 3 + 4 = 4 + 3 + 2 + 1 := by eq_as_reals
+-- Mixed associativity and commutativity
+lemma test_mixed_assoc_comm_1 : (1 : ENNReal) + 2 + 3 + 4 = 4 + 3 + 2 + 1 := by eq_as_reals
 
--- lemma test_mixed_assoc_comm_2 : (2 : ENNReal) * 3 * 4 * 5 = 5 * 4 * 3 * 2 := by eq_as_reals
+lemma test_mixed_assoc_comm_2 : (2 : ENNReal) * 3 * 4 * 5 = 5 * 4 * 3 * 2 := by eq_as_reals
 
--- end AssociativityCommutativeTests
+end AssociativityCommutativeTests
 
 -- -- =============================================
 -- -- NUMERICAL SEQUENCES AND PATTERNS
 -- -- =============================================
 
--- section SequenceTests
+section SequenceTests
 
--- -- Arithmetic sequences
--- lemma test_arithmetic_sequence_1 : (1 : ENNReal) + 2 + 3 + 4 + 5 = 15 := by eq_as_reals
+-- Arithmetic sequences
+lemma test_arithmetic_sequence_1 : (1 : ENNReal) + 2 + 3 + 4 + 5 = 15 := by eq_as_reals
 
--- lemma test_arithmetic_sequence_2 : (10 : ENNReal) + 20 + 30 + 40 + 50 = 150 := by eq_as_reals
+lemma test_arithmetic_sequence_2 : (10 : ENNReal) + 20 + 30 + 40 + 50 = 150 := by eq_as_reals
 
--- lemma test_arithmetic_sequence_3 : (2 : ENNReal) + 4 + 6 + 8 + 10 = 30 := by eq_as_reals
+lemma test_arithmetic_sequence_3 : (2 : ENNReal) + 4 + 6 + 8 + 10 = 30 := by eq_as_reals
 
--- -- Geometric-like patterns
--- lemma test_powers_of_two_sum : (1 : ENNReal) + 2 + 4 + 8 + 16 = 31 := by eq_as_reals
+-- Geometric-like patterns
+lemma test_powers_of_two_sum : (1 : ENNReal) + 2 + 4 + 8 + 16 = 31 := by eq_as_reals
 
--- lemma test_powers_of_three_sum : (1 : ENNReal) + 3 + 9 + 27 = 40 := by eq_as_reals
+lemma test_powers_of_three_sum : (1 : ENNReal) + 3 + 9 + 27 = 40 := by eq_as_reals
 
--- -- Square numbers
--- lemma test_square_numbers_1 : (1 : ENNReal) + 4 + 9 + 16 = 30 := by eq_as_reals
+-- Square numbers
+lemma test_square_numbers_1 : (1 : ENNReal) + 4 + 9 + 16 = 30 := by eq_as_reals
 
--- lemma test_square_numbers_2 : (1 : ENNReal) + 4 + 9 + 16 + 25 = 55 := by eq_as_reals
+lemma test_square_numbers_2 : (1 : ENNReal) + 4 + 9 + 16 + 25 = 55 := by eq_as_reals
 
--- -- Triangular numbers
--- lemma test_triangular_1 : (1 : ENNReal) + 3 + 6 + 10 = 20 := by eq_as_reals
+-- Triangular numbers
+lemma test_triangular_1 : (1 : ENNReal) + 3 + 6 + 10 = 20 := by eq_as_reals
 
--- lemma test_triangular_2 : (1 : ENNReal) + 3 + 6 + 10 + 15 = 35 := by eq_as_reals
+lemma test_triangular_2 : (1 : ENNReal) + 3 + 6 + 10 + 15 = 35 := by eq_as_reals
 
--- end SequenceTests
+end SequenceTests
 
 -- -- =============================================
 -- -- EXTREMELY LARGE NUMBER TESTS
 -- -- =============================================
 
--- section LargeNumberTests
+section LargeNumberTests
 
--- -- Very large additions
--- lemma test_large_1 : (1000 : ENNReal) + 2000 + 3000 + 4000 + 5000 = 15000 := by eq_as_reals
+-- Very large additions
+lemma test_large_1 : (1000 : ENNReal) + 2000 + 3000 + 4000 + 5000 = 15000 := by eq_as_reals
 
--- lemma test_large_2 : (10000 : ENNReal) + 20000 + 30000 = 60000 := by eq_as_reals
+lemma test_large_2 : (10000 : ENNReal) + 20000 + 30000 = 60000 := by eq_as_reals
 
--- lemma test_large_3 : (50000 : ENNReal) + 50000 = 100000 := by eq_as_reals
+lemma test_large_3 : (50000 : ENNReal) + 50000 = 100000 := by eq_as_reals
 
--- -- Large multiplications
--- lemma test_large_mul_1 : (1000 : ENNReal) * 10 = 10000 := by eq_as_reals
+-- Large multiplications
+lemma test_large_mul_1 : (1000 : ENNReal) * 10 = 10000 := by eq_as_reals
 
--- lemma test_large_mul_2 : (500 : ENNReal) * 20 = 10000 := by eq_as_reals
+lemma test_large_mul_2 : (500 : ENNReal) * 20 = 10000 := by eq_as_reals
 
--- lemma test_large_mul_3 : (250 : ENNReal) * 40 = 10000 := by eq_as_reals
+lemma test_large_mul_3 : (250 : ENNReal) * 40 = 10000 := by eq_as_reals
 
--- -- Mixed large operations
--- lemma test_large_mixed_1 : (1000 : ENNReal) + 2000 * 3 = 7000 := by eq_as_reals
+-- Mixed large operations
+lemma test_large_mixed_1 : (1000 : ENNReal) + 2000 * 3 = 7000 := by eq_as_reals
 
--- lemma test_large_mixed_2 : (500 : ENNReal) * 2 + 3000 = 4000 := by eq_as_reals
+lemma test_large_mixed_2 : (500 : ENNReal) * 2 + 3000 = 4000 := by eq_as_reals
 
--- lemma test_large_mixed_3 : (100 : ENNReal) * 10 + 200 * 5 = 2000 := by eq_as_reals
+lemma test_large_mixed_3 : (100 : ENNReal) * 10 + 200 * 5 = 2000 := by eq_as_reals
 
--- end LargeNumberTests
+end LargeNumberTests
 
 -- -- =============================================
 -- -- EDGE CASE AND BOUNDARY TESTS
 -- -- =============================================
 
--- section EdgeCaseTests
+section EdgeCaseTests
 
--- -- Single operand tests
--- lemma test_single_1 : (42 : ENNReal) = 42 := by eq_as_reals
+-- Single operand tests
 
--- lemma test_single_2 : (0 : ENNReal) = 0 := by eq_as_reals
 
--- lemma test_single_3 : (1 : ENNReal) = 1 := by eq_as_reals
+lemma test_single_1 : (42 : ENNReal) = 42 := by eq_as_reals
 
--- -- Identity operations
--- lemma test_identity_1 : (7 : ENNReal) + 0 = 7 := by eq_as_reals
+lemma test_single_2 : (0 : ENNReal) = 0 := by eq_as_reals
 
--- lemma test_identity_2 : (9 : ENNReal) * 1 = 9 := by eq_as_reals
+lemma test_single_3 : (1 : ENNReal) = 1 := by eq_as_reals
 
--- lemma test_identity_3 : (15 : ENNReal) / 1 = 15 := by eq_as_reals
+-- Identity operations
+lemma test_identity_1 : (7 : ENNReal) + 0 = 7 := by eq_as_reals
 
--- -- Zero operations
--- lemma test_zero_1 : (0 : ENNReal) + 15 = 15 := by eq_as_reals
+lemma test_identity_2 : (9 : ENNReal) * 1 = 9 := by eq_as_reals
 
--- lemma test_zero_2 : (0 : ENNReal) * 99 = 0 := by eq_as_reals
+lemma test_identity_3 : (15 : ENNReal) / 1 = 15 := by eq_as_reals
 
--- lemma test_zero_3 : (25 : ENNReal) * 0 = 0 := by eq_as_reals
+-- Zero operations
+lemma test_zero_1 : (0 : ENNReal) + 15 = 15 := by eq_as_reals
 
--- -- Multiple zeros
--- lemma test_multiple_zeros_1 : (0 : ENNReal) + 0 + 0 = 0 := by eq_as_reals
+lemma test_zero_2 : (0 : ENNReal) * 99 = 0 := by eq_as_reals
 
--- lemma test_multiple_zeros_2 : (0 : ENNReal) * 0 * 0 = 0 := by eq_as_reals
+lemma test_zero_3 : (25 : ENNReal) * 0 = 0 := by eq_as_reals
 
--- lemma test_multiple_zeros_3 : (0 : ENNReal) + 0 + 0 + 0 + 0 = 0 := by eq_as_reals
+-- Multiple zeros
+lemma test_multiple_zeros_1 : (0 : ENNReal) + 0 + 0 = 0 := by eq_as_reals
 
--- -- Multiple ones
--- lemma test_multiple_ones_1 : (1 : ENNReal) * 1 * 1 = 1 := by eq_as_reals
+lemma test_multiple_zeros_2 : (0 : ENNReal) * 0 * 0 = 0 := by eq_as_reals
 
--- lemma test_multiple_ones_2 : (1 : ENNReal) + 1 + 1 = 3 := by eq_as_reals
+lemma test_multiple_zeros_3 : (0 : ENNReal) + 0 + 0 + 0 + 0 = 0 := by eq_as_reals
 
--- lemma test_multiple_ones_3 : (1 : ENNReal) * 1 * 1 * 1 * 1 = 1 := by eq_as_reals
+-- Multiple ones
+lemma test_multiple_ones_1 : (1 : ENNReal) * 1 * 1 = 1 := by eq_as_reals
 
--- end EdgeCaseTests
+lemma test_multiple_ones_2 : (1 : ENNReal) + 1 + 1 = 3 := by eq_as_reals
+
+lemma test_multiple_ones_3 : (1 : ENNReal) * 1 * 1 * 1 * 1 = 1 := by eq_as_reals
+
+end EdgeCaseTests
 
 -- -- =============================================
 -- -- CHAIN OPERATION TESTS
@@ -434,26 +448,26 @@ lemma test_advanced_basic : (2 : ENNReal) + 3 = 5 := by eq_as_reals
 
 -- section ParenthesesTests
 
--- -- Simple parentheses
--- lemma test_parens_1 : ((5 : ENNReal) + 3) * 2 = 16 := by eq_as_reals
+-- Simple parentheses
+lemma test_parens_1 : ((5 : ENNReal) + 3) * 2 = 16 := by eq_as_reals
 
--- lemma test_parens_2 : (7 : ENNReal) + (4 * 3) = 19 := by eq_as_reals
+lemma test_parens_2 : (7 : ENNReal) + (4 * 3) = 19 := by eq_as_reals
 
--- lemma test_parens_3 : ((10 : ENNReal) + 0) + 5 = 15 := by eq_as_reals
+lemma test_parens_3 : ((10 : ENNReal) + 0) + 5 = 15 := by eq_as_reals
 
--- -- Nested parentheses
--- lemma test_nested_parens_1 : (((2 : ENNReal) + 3) + 4) = 9 := by eq_as_reals
+-- Nested parentheses
+lemma test_nested_parens_1 : (((2 : ENNReal) + 3) + 4) = 9 := by eq_as_reals
 
 
 
 lemma test_nested_parens_3 : ((((5 : ENNReal) + 1) + 2) + 3) = 11 := by eq_as_reals
 
--- -- Complex parentheses
--- lemma test_complex_parens_1 : ((2 : ENNReal) + 3) * ((4 + 5) + 6) = 75 := by eq_as_reals
+-- Complex parentheses
+lemma test_complex_parens_1 : ((2 : ENNReal) + 3) * ((4 + 5) + 6) = 75 := by eq_as_reals
 
--- lemma test_complex_parens_2 : ((1 : ENNReal) + (2 + 3)) + ((4 + 5) + 6) = 21 := by eq_as_reals
+lemma test_complex_parens_2 : ((1 : ENNReal) + (2 + 3)) + ((4 + 5) + 6) = 21 := by eq_as_reals
 
--- lemma test_complex_parens_3 : (((7 : ENNReal) + 8) + 9) + (((10 + 11) + 12) + 13) = 70 := by eq_as_reals
+lemma test_complex_parens_3 : (((7 : ENNReal) + 8) + 9) + (((10 + 11) + 12) + 13) = 70 := by eq_as_reals
 
 -- end ParenthesesTests
 
@@ -463,26 +477,26 @@ lemma test_nested_parens_3 : ((((5 : ENNReal) + 1) + 2) + 3) = 11 := by eq_as_re
 
 -- section MixedComplexTests
 
--- -- Triple operations
--- lemma test_triple_1 : (2 : ENNReal) + 3 * 4 / 1 = 14 := by eq_as_reals
+-- Triple operations
+lemma test_triple_1 : (2 : ENNReal) + 3 * 4 / 1 = 14 := by eq_as_reals
 
--- lemma test_triple_2 : (5 : ENNReal) * 6 + 7 / 1 = 37 := by eq_as_reals
+lemma test_triple_2 : (5 : ENNReal) * 6 + 7 / 1 = 37 := by eq_as_reals
 
--- lemma test_triple_3 : (8 : ENNReal) / 1 + 9 * 2 = 26 := by eq_as_reals
+lemma test_triple_3 : (8 : ENNReal) / 1 + 9 * 2 = 26 := by eq_as_reals
 
--- -- Quadruple operations
--- lemma test_quadruple_1 : (1 : ENNReal) + 2 * 3 + 4 / 1 = 11 := by eq_as_reals
+-- Quadruple operations
+lemma test_quadruple_1 : (1 : ENNReal) + 2 * 3 + 4 / 1 = 11 := by eq_as_reals
 
--- lemma test_quadruple_2 : (2 : ENNReal) * 3 + 4 * 5 / 1 = 26 := by eq_as_reals
+lemma test_quadruple_2 : (2 : ENNReal) * 3 + 4 * 5 / 1 = 26 := by eq_as_reals
 
--- lemma test_quadruple_3 : (10 : ENNReal) / 1 + 20 / 1 + 30 = 60 := by eq_as_reals
+lemma test_quadruple_3 : (10 : ENNReal) / 1 + 20 / 1 + 30 = 60 := by eq_as_reals
 
--- -- Complex mixed with parentheses
--- lemma test_complex_mixed_1 : ((2 : ENNReal) + 3) * 4 + (5 * 6) / 1 = 50 := by eq_as_reals
+-- Complex mixed with parentheses
+lemma test_complex_mixed_1 : ((2 : ENNReal) + 3) * 4 + (5 * 6) / 1 = 50 := by eq_as_reals
 
--- lemma test_complex_mixed_2 : ((7 : ENNReal) * 8) + (9 + 10) / 1 = 75 := by eq_as_reals
+lemma test_complex_mixed_2 : ((7 : ENNReal) * 8) + (9 + 10) / 1 = 75 := by eq_as_reals
 
--- lemma test_complex_mixed_3 : (((1 : ENNReal) + 2) * 3 + 4) * 5 / 1 = 65 := by eq_as_reals
+lemma test_complex_mixed_3 : (((1 : ENNReal) + 2) * 3 + 4) * 5 / 1 = 65 := by eq_as_reals
 
 -- end MixedComplexTests
 
@@ -492,26 +506,26 @@ lemma test_nested_parens_3 : ((((5 : ENNReal) + 1) + 2) + 3) = 11 := by eq_as_re
 
 -- section PatternTests
 
--- -- Fibonacci-like patterns
--- lemma test_fibonacci_1 : (1 : ENNReal) + 1 + 2 + 3 + 5 = 12 := by eq_as_reals
+-- Fibonacci-like patterns
+lemma test_fibonacci_1 : (1 : ENNReal) + 1 + 2 + 3 + 5 = 12 := by eq_as_reals
 
--- lemma test_fibonacci_2 : (1 : ENNReal) + 1 + 2 + 3 + 5 + 8 = 20 := by eq_as_reals
+lemma test_fibonacci_2 : (1 : ENNReal) + 1 + 2 + 3 + 5 + 8 = 20 := by eq_as_reals
 
--- lemma test_fibonacci_3 : (1 : ENNReal) + 1 + 2 + 3 + 5 + 8 + 13 = 33 := by eq_as_reals
+lemma test_fibonacci_3 : (1 : ENNReal) + 1 + 2 + 3 + 5 + 8 + 13 = 33 := by eq_as_reals
 
--- -- Alternating patterns
--- lemma test_alternating_1 : (1 : ENNReal) + 3 + 5 + 7 + 9 = 25 := by eq_as_reals
+-- Alternating patterns
+lemma test_alternating_1 : (1 : ENNReal) + 3 + 5 + 7 + 9 = 25 := by eq_as_reals
 
--- lemma test_alternating_2 : (2 : ENNReal) + 4 + 6 + 8 + 10 = 30 := by eq_as_reals
+lemma test_alternating_2 : (2 : ENNReal) + 4 + 6 + 8 + 10 = 30 := by eq_as_reals
 
--- lemma test_alternating_3 : (10 : ENNReal) + 30 + 50 + 70 = 160 := by eq_as_reals
+lemma test_alternating_3 : (10 : ENNReal) + 30 + 50 + 70 = 160 := by eq_as_reals
 
--- -- Doubling patterns
--- lemma test_doubling_1 : (1 : ENNReal) + 2 + 4 + 8 = 15 := by eq_as_reals
+-- Doubling patterns
+lemma test_doubling_1 : (1 : ENNReal) + 2 + 4 + 8 = 15 := by eq_as_reals
 
--- lemma test_doubling_2 : (3 : ENNReal) + 6 + 12 + 24 = 45 := by eq_as_reals
+lemma test_doubling_2 : (3 : ENNReal) + 6 + 12 + 24 = 45 := by eq_as_reals
 
--- lemma test_doubling_3 : (5 : ENNReal) + 10 + 20 + 40 = 75 := by eq_as_reals
+lemma test_doubling_3 : (5 : ENNReal) + 10 + 20 + 40 = 75 := by eq_as_reals
 
 -- end PatternTests
 
@@ -522,18 +536,18 @@ lemma test_nested_parens_3 : ((((5 : ENNReal) + 1) + 2) + 3) = 11 := by eq_as_re
 -- section FinalStressTests
 
 -- -- Maximum nesting that works
--- lemma test_max_nesting_1 : ((((((1 : ENNReal) + 1) + 1) + 1) + 1) + 1) + 1 = 7 := by eq_as_reals
+lemma test_max_nesting_1 : ((((((1 : ENNReal) + 1) + 1) + 1) + 1) + 1) + 1 = 7 := by eq_as_reals
 
--- lemma test_max_nesting_2 : ((((((2 : ENNReal) * 2) + 1) + 1) + 1) + 1) + 1 = 9 := by eq_as_reals
+lemma test_max_nesting_2 : ((((((2 : ENNReal) * 2) + 1) + 1) + 1) + 1) + 1 = 9 := by eq_as_reals
 
--- lemma test_max_nesting_3 : (((((((3 : ENNReal) + 1) + 1) + 1) + 1) + 1) + 1) + 1 = 10 := by eq_as_reals
+lemma test_max_nesting_3 : (((((((3 : ENNReal) + 1) + 1) + 1) + 1) + 1) + 1) + 1 = 10 := by eq_as_reals
 
 -- -- Very long chains
--- lemma test_very_long_1 : (1 : ENNReal) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = 15 := by eq_as_reals
+lemma test_very_long_1 : (1 : ENNReal) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = 15 := by eq_as_reals
 
--- lemma test_very_long_2 : (2 : ENNReal) + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 2 = 26 := by eq_as_reals
+lemma test_very_long_2 : (2 : ENNReal) + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 2 = 26 := by eq_as_reals
 
--- lemma test_very_long_3 : (1 : ENNReal) * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 = 1 := by eq_as_reals
+lemma test_very_long_3 : (1 : ENNReal) * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 * 1 = 1 := by eq_as_reals
 
 -- -- Complex expressions combining all patterns
 -- lemma test_ultimate_1 : ((((2 : ENNReal) + 3) * 4) + ((5 + 6) * 7)) + (((8 + 9) + 10) * 0) = 97 := by eq_as_reals
@@ -551,60 +565,27 @@ lemma test_nested_parens_3 : ((((5 : ENNReal) + 1) + 2) + 3) = 11 := by eq_as_re
 
 -- end FinalStressTests
 
--- -- =============================================
--- -- INVERSE AND MIXED OPERATOR DEVELOPMENT
--- -- =============================================
 
--- /-!
--- ## Enhanced Inverse and Mixed Operator Support
-
--- ### Inverse Support Added to Solver:
--- The `solveAdvancedFractions` function now includes:
--- - `repeat rw [inv_eq_one_div]; norm_num` - Like Basic.lean
--- - `simp only [inv_eq_one_div]; norm_num` - Direct inverse handling
--- - `simp only [div_eq_mul_inv, inv_eq_one_div]; field_simp; norm_num` - Complex patterns
-
--- ### Working Inverse Tests (Basic Level):
--- These demonstrate the foundation for inverse arithmetic:
--- - Basic conversion: `x⁻¹ = 1/x`
--- - Simple inverse addition patterns
--- - Integration with existing fraction handling
-
--- ### Mixed Operator Tests:
--- The current solver successfully handles:
--- - Basic mixed chains: `a + b * c + d`
--- - Simple nesting: `(a + b) * c`
--- - Mixed operations with division by 1
-
--- ### Future Development Areas:
--- For full inverse and complex mixed operator support, the solver would need:
--- 1. Enhanced inverse multiplication: `x⁻¹ * x = 1`
--- 2. Complex inverse combinations: `(x⁻¹ + y⁻¹) * z`
--- 3. Multi-level nesting with varied operators
--- 4. Advanced operator precedence chains
-
--- The current implementation provides the foundation for these capabilities.
--- -/
 
 -- section InverseOperationTests
 
--- -- Basic inverse tests (foundation working)
--- lemma test_inverse_basic_1 : (5 : ENNReal)⁻¹ = 1 / 5 := by eq_as_reals
+-- Basic inverse tests (foundation working)
+lemma test_inverse_basic_1 : (5 : ENNReal)⁻¹ = 1 / 5 := by eq_as_reals
 
--- lemma test_inverse_basic_2 : (10 : ENNReal)⁻¹ = 1 / 10 := by eq_as_reals
+lemma test_inverse_basic_2 : (10 : ENNReal)⁻¹ = 1 / 10 := by eq_as_reals
 
--- lemma test_inverse_basic_3 : (2 : ENNReal)⁻¹ = 1 / 2 := by eq_as_reals
+lemma test_inverse_basic_3 : (2 : ENNReal)⁻¹ = 1 / 2 := by eq_as_reals
 
 -- end InverseOperationTests
 
 -- section MultiLevelMixedOperatorTests
 
--- -- Working mixed operator demonstrations
--- lemma test_mixed_demo_1 : (2 : ENNReal) + 3 * 4 = 14 := by eq_as_reals
+-- Working mixed operator demonstrations
+lemma test_mixed_demo_1 : (2 : ENNReal) + 3 * 4 = 14 := by eq_as_reals
 
--- lemma test_mixed_demo_2 : (5 : ENNReal) * 2 + 6 = 16 := by eq_as_reals
+lemma test_mixed_demo_2 : (5 : ENNReal) * 2 + 6 = 16 := by eq_as_reals
 
--- lemma test_mixed_demo_3 : (8 : ENNReal) / 1 + 9 = 17 := by eq_as_reals
+lemma test_mixed_demo_3 : (8 : ENNReal) / 1 + 9 = 17 := by eq_as_reals
 
 -- end MultiLevelMixedOperatorTests
 
@@ -614,17 +595,17 @@ lemma test_nested_parens_3 : ((((5 : ENNReal) + 1) + 2) + 3) = 11 := by eq_as_re
 
 -- section FractionInverseStressTests
 
--- -- Division stress tests
--- lemma test_div_stress_1 : (100 : ENNReal) / 1 / 1 / 1 / 1 / 1 = 100 := by eq_as_reals
+-- Division stress tests
+lemma test_div_stress_1 : (100 : ENNReal) / 1 / 1 / 1 / 1 / 1 = 100 := by eq_as_reals
 
--- lemma test_div_stress_2 : (50 : ENNReal) / 1 / 1 + 50 / 1 / 1 = 100 := by eq_as_reals
+lemma test_div_stress_2 : (50 : ENNReal) / 1 / 1 + 50 / 1 / 1 = 100 := by eq_as_reals
 
--- lemma test_div_stress_3 : (25 : ENNReal) / 1 * 4 / 1 = 100 := by eq_as_reals
+lemma test_div_stress_3 : (25 : ENNReal) / 1 * 4 / 1 = 100 := by eq_as_reals
 
--- -- Multiple division patterns
--- lemma test_multi_div_1 : ((20 : ENNReal) / 4) / 1 = 5 := by eq_as_reals
+-- Multiple division patterns
+lemma test_multi_div_1 : ((20 : ENNReal) / 4) / 1 = 5 := by eq_as_reals
 
--- lemma test_multi_div_2 : (30 : ENNReal) / (6 / 1) = 5 := by eq_as_reals
+lemma test_multi_div_2 : (30 : ENNReal) / (6 / 1) = 5 := by eq_as_reals
 
 lemma test_multi_div_3 : ((40 : ENNReal) / 8) + ((50 / 10)) = 10 := by eq_as_reals
 
@@ -647,11 +628,11 @@ lemma test_multi_div_3 : ((40 : ENNReal) / 8) + ((50 / 10)) = 10 := by eq_as_rea
 
 lemma test_inverse_stress_2 : (4 : ENNReal)⁻¹ + (4 : ENNReal)⁻¹ + (4 : ENNReal)⁻¹ = 3 * (4 : ENNReal)⁻¹ := by eq_as_reals
 
--- -- Large number fraction stress
--- lemma test_large_fraction_1 : (1000 : ENNReal) / 100 = 10 := by eq_as_reals
+-- Large number fraction stress
+lemma test_large_fraction_1 : (1000 : ENNReal) / 100 = 10 := by eq_as_reals
 
--- lemma test_large_fraction_2 : (2000 : ENNReal) / 200 + 5 = 15 := by
---   eq_as_reals
+lemma test_large_fraction_2 : (2000 : ENNReal) / 200 + 5 = 15 := by
+  eq_as_reals
 
 
 
@@ -724,12 +705,8 @@ lemma test_eq_as_reals_3 : (1500 : ENNReal) / 300 / 5 = 1 := by eq_as_reals
 
 
 
--- lemma test_many_ops_3 : (6 : ENNReal) / 6 + 7 / 7 + 8 / 8 + 9 / 9 + 10 / 10 = 5 := by
---   repeat rw [add_assoc]
---   repeat
---     rw [add_mixed_denom]
---   rw [div_eq_iff]
---   repeat norm_num
+lemma test_many_ops_3 : (6 : ENNReal) / 6 + 7 / 7 + 8 / 8 + 9 / 9 + 10 / 10 = 5 := by
+  eq_as_reals
 
 -- -- Combined fraction and inverse stress
 -- lemma test_combined_stress_1 : (6 : ENNReal)⁻¹ + 6 / 6 = (6 : ENNReal)⁻¹ + 1 := by
