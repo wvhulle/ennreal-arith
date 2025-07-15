@@ -2,19 +2,35 @@ import ENNRealArith
 
 open ENNReal
 
+set_option profiler true
 
 -- set_option trace.ENNRealArith.search true in
 -- set_option trace.ENNRealArith.conversion true in
 -- set_option trace.ENNRealArith.lifting true in
 -- set_option trace.ENNRealArith.debug true in
 -- set_option trace.ENNRealArith.final true in
-lemma test_with_vars {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
+lemma test_with_vars {a b : ENNReal} :
   a + b = b + a := by
   eq_as_reals
 
-lemma test_eq_as_reals_inverse_1 : (5 : ENNReal)⁻¹ = 1 / 5 := by eq_as_reals
+
+example: 0 ≤ (ENNReal.ofReal 0).toReal + ((ENNReal.ofReal 0).toReal + (ENNReal.ofReal 0).toReal) := by
+  eq_as_reals
+
+lemma test_eq_as_reals_inverse_1 : (5 : ENNReal)⁻¹ = 1 / (↑ 5) := by eq_as_reals
 
 
+lemma test_coercion_literal : (↑(3 : ℕ) : ENNReal) + (↑(4 :
+  ℕ) : ENNReal) = 7 := by eq_as_reals
+
+lemma test_nnreal_coercion : (↑(3 : NNReal) : ENNReal) + (↑(4
+   : NNReal) : ENNReal) = 7 := by eq_as_reals
+
+-- set_option trace.ENNRealArith.search true in
+lemma test_decimal_nnreal : (↑(3.5 : NNReal) : ENNReal) + (↑(1.5 : NNReal) : ENNReal) = 5 := by eq_as_reals
+
+lemma test_extremely_deep_nesting :
+  (((((1 : ENNReal) + 1) + 1) + 1) + ((1 + 1) + 1)) + (((1 + 1) + (1 + 1)) + ((1 + 1) + (1 + 1))) = 15 := by eq_as_reals
 
 lemma test_fraction_chain_1 : (12 : ENNReal) / 3 / 2 = 2 := by
   calc 12 / 3 / 2
@@ -38,6 +54,14 @@ lemma test_fraction_chain_1 : (12 : ENNReal) / 3 / 2 = 2 := by
   _ = 2 := by
     norm_num
 
+-- set_option trace.ENNRealArith.conversion true in
+-- set_option trace.ENNRealArith.lifting true in
+-- set_option trace.ENNRealArith.debug true in
+-- set_option trace.ENNRealArith.final true in
+-- set_option trace.ENNRealArith.search true in
+-- set_option trace.ENNRealArith.conversion true in
+-- set_option trace.ENNRealArith.lifting true in
+-- set_option trace.ENNRealArith.final true in
 lemma test_fraction_chain_1_auto : (12 : ENNReal) / 3 / 2 = 2 := by
   eq_as_reals
 
@@ -155,44 +179,44 @@ end AssociativityTests
 -- lemma test_stress_mixed_operations :
 --   (((2 : ENNReal) + 3) * 4 + (5 * 6) + ((7 + 8) * 9)) + 0 = 185 := by eq_as_reals
 
--- -- Fibonacci-like recursive patterns
--- lemma test_stress_fibonacci_pattern :
---   let a := (1 : ENNReal)
---   let b := (1 : ENNReal)
---   let c := a + b
---   let d := b + c
---   let e := c + d
---   let f := d + e
---   a + b + c + d + e + f = 20 := by eq_as_reals
+-- Fibonacci-like recursive patterns
+lemma test_stress_fibonacci_pattern :
+  let a := (1 : ENNReal)
+  let b := (1 : ENNReal)
+  let c := a + b
+  let d := b + c
+  let e := c + d
+  let f := d + e
+  a + b + c + d + e + f = 20 := by eq_as_reals
 
--- -- Factorial-like patterns
--- lemma test_stress_factorial_pattern :
---   (1 : ENNReal) * (1 + 1) * (1 + 1 + 1) * (1 + 1 + 1 + 1) * (1 + 1 + 1 + 1 + 1) = 120 := by eq_as_reals
+-- Factorial-like patterns
+lemma test_stress_factorial_pattern :
+  (1 : ENNReal) * (1 + 1) * (1 + 1 + 1) * (1 + 1 + 1 + 1) * (1 + 1 + 1 + 1 + 1) = 120 := by eq_as_reals
 
 -- end StressTests
 
 -- section FractionArithmeticTests
 
--- -- Test that basic arithmetic still works
--- lemma test_basic_addition_check : (2 : ENNReal) + 3 = 5 := by eq_as_reals
+-- Test that basic arithmetic still works
+lemma test_basic_addition_check : (2 : ENNReal) + 3 = 5 := by eq_as_reals
 
--- lemma test_basic_multiplication_check : (2 : ENNReal) * 3 = 6 := by eq_as_reals
+lemma test_basic_multiplication_check : (2 : ENNReal) * 3 = 6 := by eq_as_reals
 
--- -- Now try division tests step by step
--- lemma test_fraction_div_one : (7 : ENNReal) / 1 = 7 := by eq_as_reals
+-- Now try division tests step by step
+lemma test_fraction_div_one : (7 : ENNReal) / 1 = 7 := by eq_as_reals
 
--- -- Division by self cases (these should work from ImprovedSolver)
--- lemma test_fraction_div_self_1 : (5 : ENNReal) / 5 = 1 := by eq_as_reals
+-- Division by self cases (these should work from ImprovedSolver)
+lemma test_fraction_div_self_1 : (5 : ENNReal) / 5 = 1 := by eq_as_reals
 
--- -- More division by self tests
--- lemma test_fraction_div_self_2 : (17 : ENNReal) / 17 = 1 := by eq_as_reals
+-- More division by self tests
+lemma test_fraction_div_self_2 : (17 : ENNReal) / 17 = 1 := by eq_as_reals
 
--- lemma test_fraction_div_self_3 : (100 : ENNReal) / 100 = 1 := by eq_as_reals
+lemma test_fraction_div_self_3 : (100 : ENNReal) / 100 = 1 := by eq_as_reals
 
--- -- Division by 1 tests
--- lemma test_fraction_div_one_2 : (15 : ENNReal) / 1 = 15 := by eq_as_reals
+-- Division by 1 tests
+lemma test_fraction_div_one_2 : (15 : ENNReal) / 1 = 15 := by eq_as_reals
 
--- lemma test_fraction_div_one_3 : (42 : ENNReal) / 1 = 42 := by eq_as_reals
+lemma test_fraction_div_one_3 : (42 : ENNReal) / 1 = 42 := by eq_as_reals
 
 -- end FractionArithmeticTests
 
