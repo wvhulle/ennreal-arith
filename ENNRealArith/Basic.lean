@@ -24,31 +24,40 @@ namespace ENNRealArith
 Count occurrences of ENNReal.ofReal in an expression
 -/
 partial def countOfRealOccurrences (e : Expr) : Nat :=
-  (if e.isAppOf ``ENNReal.ofReal then 1 else 0) +
-  e.getAppArgs.foldl (fun acc arg => acc + countOfRealOccurrences arg) 0
+  let count := if e.isAppOf ``ENNReal.ofReal then 1 else 0
+  count + e.getAppArgs.foldl (fun acc arg => acc + countOfRealOccurrences arg) 0
 
 /-!
 Check if an expression is a literal or simple ENNReal.ofReal application
 -/
-def fullyLifted (e : Expr) : Bool := 
-  e.isAppOf ``ENNReal.ofReal ||
-  (e.isAppOfArity ``OfNat.ofNat 3 && 
-   let args := e.getAppArgs
-   args.size >= 3 && args[0]!.isAppOf ``ENNReal && args[1]!.isLit) ||
-  (e.isAppOf ``Nat.cast &&
-   let args := e.getAppArgs
-   args.size >= 3 && args[1]!.isAppOf ``ENNReal && args[2]!.isLit)
+def fullyLifted (e : Expr) : Bool := Id.run do
+  -- Check for ENNReal.ofReal pattern
+  if e.isAppOf ``ENNReal.ofReal then
+    return true
+
+  -- Check for OfNat.ofNat pattern with literal
+  if e.isAppOfArity ``OfNat.ofNat 3 then
+    let args := e.getAppArgs
+    if args.size >= 3 then
+      return args[0]!.isAppOf ``ENNReal && args[1]!.isLit
+
+  -- Check for Nat.cast pattern with literal
+  if e.isAppOfArity ``Nat.cast 2 then
+    let args := e.getAppArgs
+    if args.size >= 2 then
+      return args[0]!.isAppOf ``ENNReal && args[1]!.isLit
+
+  return false
 
 /-!
 Check if the goal is ready for final computation:
 - Must be an equality
 - Both sides must be literals or simple ENNReal.ofReal applications
 -/
-def isReadyForFinalComputation (goalType : Expr) : TacticM Bool := do
-  return goalType.isAppOf ``Eq &&
-         goalType.getAppArgs.size >= 3 &&
-         let args := goalType.getAppArgs
-         fullyLifted args[1]! && fullyLifted args[2]!
+def isReadyForFinalComputation (goalType : Expr) : Bool :=
+  goalType.isAppOfArity ``Eq 3 &&
+    let args := goalType.getAppArgs
+    args.size >= 3 && fullyLifted args[1]! && fullyLifted args[2]!
 
 
 structure FiniteVar where
@@ -63,26 +72,23 @@ def maybeFiniteFVar (e: Expr) : MetaM (Option FiniteVar) := do
   ctx.findDeclM? fun decl => do
     if decl.isImplementationDetail then return none
     let declType := decl.type
-    
-    -- Helper to check if expression matches finiteness pattern
-    let checkFinitePattern (expr : Expr) : Bool :=
-      expr.isAppOfArity ``Eq 3 && 
-      let args := expr.getAppArgs
-      args.size >= 3 && args[1]! == e && args[2]!.isAppOfArity ``Top.top 2
-    
-    -- Check for e ≠ ⊤ patterns
-    if declType.isAppOfArity ``Ne 3 then
+
+    -- Pattern matching for finiteness proofs
+    match isFinitePattern e declType with
+    | true => return some (FiniteVar.mk e decl.toExpr)
+    | false => return none
+where
+  isFinitePattern (e : Expr) (declType : Expr) : Bool :=
+    -- Check for e ≠ ⊤ pattern
+    (declType.isAppOfArity ``Ne 3 &&
       let args := declType.getAppArgs
-      if args.size >= 3 && args[1]! == e && args[2]!.isAppOfArity ``Top.top 2 then
-        return some (FiniteVar.mk e decl.toExpr)
-    
-    -- Check for ¬(e = ⊤) patterns  
-    if declType.isAppOfArity ``Not 1 then
+      args.size >= 3 && args[1]! == e && args[2]!.isAppOfArity ``Top.top 2) ||
+    -- Check for ¬(e = ⊤) pattern
+    (declType.isAppOfArity ``Not 1 &&
       let eqExpr := declType.getAppArgs[0]!
-      if checkFinitePattern eqExpr then
-        return some (FiniteVar.mk e decl.toExpr)
-    
-    return none
+      eqExpr.isAppOfArity ``Eq 3 &&
+      let args := eqExpr.getAppArgs
+      args.size >= 3 && args[1]! == e && args[2]!.isAppOfArity ``Top.top 2)
 
 
 
@@ -102,7 +108,7 @@ partial def findENNVarExpr (e : Expr) : MetaM (Array ENNRealExpr) := do
   let exprType ← inferType e
   if exprType.isAppOf ``ENNReal then
     trace[ENNRealArith.search] m!"Examining ENNReal expression: {e}"
-    trace[ENNRealArith.search] m!"Expression structure: {e.ctorName}, isAppOf OfNat.ofNat: {e.isAppOfArity ``OfNat.ofNat 3}, isAppOf Coe.coe: {e.isAppOfArity ``Coe.coe 3}"
+    trace[ENNRealArith.search] m!"Expression structure: {e.ctorName}"
     if e.isApp then
       trace[ENNRealArith.search] m!"App function: {e.getAppFn}, args: {e.getAppArgs}"
 
@@ -110,6 +116,7 @@ partial def findENNVarExpr (e : Expr) : MetaM (Array ENNRealExpr) := do
     if let some finite_var <- maybeFiniteFVar e then
       literals := literals.push (ENNRealExpr.finite_var finite_var)
 
+  -- Check for OfNat.ofNat pattern
   if e.isAppOfArity ``OfNat.ofNat 3 then
     let args := e.getAppArgs
     if args.size >= 3 then
@@ -225,7 +232,7 @@ elab "eq_as_reals" : tactic => do
           let ofRealCountAfter := countOfRealOccurrences goalTypeAfter
           trace[ENNRealArith.lifting] m!"Applied phase {phase}, converted {goalTypeBefore} to {goalTypeAfter}, reduced {ofRealCountBefore} to {ofRealCountAfter} occurrences of ENNReal.ofReal"
 
-          if ← isReadyForFinalComputation goalTypeAfter then
+          if isReadyForFinalComputation goalTypeAfter then
             trace[ENNRealArith.lifting] "Ready for final computation"
             break
         catch _ =>
@@ -244,7 +251,7 @@ elab "eq_as_reals" : tactic => do
 
       previousGoalType := some goalTypeAfter
 
-      if ← isReadyForFinalComputation goalTypeAfter then
+      if isReadyForFinalComputation goalTypeAfter then
             trace[ENNRealArith.lifting] m!"Ready for final computation after iteration with goal {goalAfter}"
             break
 

@@ -14,7 +14,8 @@ lemma test_with_vars {a b : ENNReal} :
   eq_as_reals
 
 
-
+example: 0 ≤ (ENNReal.ofReal 0).toReal + ((ENNReal.ofReal 0).toReal + (ENNReal.ofReal 0).toReal) := by
+  eq_as_reals
 
 lemma test_eq_as_reals_inverse_1 : (5 : ENNReal)⁻¹ = 1 / (↑ 5) := by eq_as_reals
 
