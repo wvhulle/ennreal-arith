@@ -23,36 +23,21 @@ namespace ENNRealArith
 /-!
 Count occurrences of ENNReal.ofReal in an expression
 -/
-partial def countOfRealOccurrences (e : Expr) : Nat := Id.run do
-  let mut count := 0
-  if e.isAppOf ``ENNReal.ofReal then
-    count := count + 1
-  for arg in e.getAppArgs do
-    count := count + countOfRealOccurrences arg
-  return count
+partial def countOfRealOccurrences (e : Expr) : Nat :=
+  (if e.isAppOf ``ENNReal.ofReal then 1 else 0) +
+  e.getAppArgs.foldl (fun acc arg => acc + countOfRealOccurrences arg) 0
 
 /-!
 Check if an expression is a literal or simple ENNReal.ofReal application
 -/
-def fullyLifted (e : Expr) : Bool := Id.run do
-  if e.isAppOf ``ENNReal.ofReal then
-    return true
-
-  if e.isAppOfArity ``OfNat.ofNat 3 then
-    let args := e.getAppArgs
-    if args.size >= 3 then
-      let typeArg := args[0]!
-      let numArg := args[1]!
-      return typeArg.isAppOf ``ENNReal && numArg.isLit
-
-  if e.isAppOf ``Nat.cast then
-    let args := e.getAppArgs
-    if args.size >= 3 then
-      let typeArg := args[1]!
-      let numArg := args[2]!
-      return typeArg.isAppOf ``ENNReal && numArg.isLit
-
-  return false
+def fullyLifted (e : Expr) : Bool := 
+  e.isAppOf ``ENNReal.ofReal ||
+  (e.isAppOfArity ``OfNat.ofNat 3 && 
+   let args := e.getAppArgs
+   args.size >= 3 && args[0]!.isAppOf ``ENNReal && args[1]!.isLit) ||
+  (e.isAppOf ``Nat.cast &&
+   let args := e.getAppArgs
+   args.size >= 3 && args[1]!.isAppOf ``ENNReal && args[2]!.isLit)
 
 /-!
 Check if the goal is ready for final computation:
@@ -60,17 +45,10 @@ Check if the goal is ready for final computation:
 - Both sides must be literals or simple ENNReal.ofReal applications
 -/
 def isReadyForFinalComputation (goalType : Expr) : TacticM Bool := do
-  -- Check if it's an equality (Eq)
-  if !goalType.isAppOf ``Eq then return false
-
-  let args := goalType.getAppArgs
-  if args.size < 3 then return false
-
-  let lhs := args[1]!  -- Left-hand side
-  let rhs := args[2]!  -- Right-hand side
-
-
-  return (fullyLifted lhs) && (fullyLifted rhs)
+  return goalType.isAppOf ``Eq &&
+         goalType.getAppArgs.size >= 3 &&
+         let args := goalType.getAppArgs
+         fullyLifted args[1]! && fullyLifted args[2]!
 
 
 structure FiniteVar where
@@ -80,25 +58,30 @@ structure FiniteVar where
 
 
 def maybeFiniteFVar (e: Expr) : MetaM (Option FiniteVar) := do
-  if e.isFVar then
-    let ctx ← getLCtx
-    ctx.findDeclM? fun decl => do
-      if !decl.isImplementationDetail then
-        let declType := decl.type
-        if declType.isAppOfArity ``Ne 3 then
-          let args := declType.getAppArgs
-          if args.size >= 3 && args[1]! == e && args[2]!.isAppOfArity ``Top.top 2 then
-            let finite_var := FiniteVar.mk e decl.toExpr
-            return some finite_var
-        if declType.isAppOfArity ``Not 1 then
-          let eqExpr := declType.getAppArgs[0]!
-          if eqExpr.isAppOfArity ``Eq 3 then
-            let eqArgs := eqExpr.getAppArgs
-            if eqArgs.size >= 3 && eqArgs[1]! == e && eqArgs[2]!.isAppOfArity ``Top.top 2 then
-              let finite_var := FiniteVar.mk e decl.toExpr
-              return some finite_var
-      return none
-  else
+  if !e.isFVar then return none
+  let ctx ← getLCtx
+  ctx.findDeclM? fun decl => do
+    if decl.isImplementationDetail then return none
+    let declType := decl.type
+    
+    -- Helper to check if expression matches finiteness pattern
+    let checkFinitePattern (expr : Expr) : Bool :=
+      expr.isAppOfArity ``Eq 3 && 
+      let args := expr.getAppArgs
+      args.size >= 3 && args[1]! == e && args[2]!.isAppOfArity ``Top.top 2
+    
+    -- Check for e ≠ ⊤ patterns
+    if declType.isAppOfArity ``Ne 3 then
+      let args := declType.getAppArgs
+      if args.size >= 3 && args[1]! == e && args[2]!.isAppOfArity ``Top.top 2 then
+        return some (FiniteVar.mk e decl.toExpr)
+    
+    -- Check for ¬(e = ⊤) patterns  
+    if declType.isAppOfArity ``Not 1 then
+      let eqExpr := declType.getAppArgs[0]!
+      if checkFinitePattern eqExpr then
+        return some (FiniteVar.mk e decl.toExpr)
+    
     return none
 
 
