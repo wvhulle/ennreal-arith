@@ -150,10 +150,7 @@ partial def findENNVarExpr (e : Expr) : MetaM (Array Expr) := do
   | .proj _ _ b => literals := literals ++ (← findENNVarExpr b)
   | _ => pure ()
 
-  if literals.isEmpty then
-    trace[ENNRealArith.search] "No ENNReal literals found in expression: {e}"
-
-  else
+  if ! literals.isEmpty then
     trace[ENNRealArith.search] m!"Found literals: {literals}"
 
   return literals
@@ -174,9 +171,7 @@ elab "eq_as_reals" : tactic => do
         return
 
     let enn_expressions <- findENNVarExpr goalType
-    if enn_expressions.isEmpty then
-      trace[ENNRealArith.info] "No ENNReal literals found in the goal."
-      return ()
+
 
 
     -- Process each ENNReal expression only once
@@ -203,7 +198,7 @@ elab "eq_as_reals" : tactic => do
 
 
 
-    trace[conversion] m!"Starting lifting phases: {← getMainGoal}"
+    trace[ENNRealArith.lifting] m!"Starting lifting phases: {← getMainGoal}"
     let maxIterations := 10
     let mut previousGoalType : Option Expr := none
     for _ in List.range maxIterations do
@@ -266,25 +261,18 @@ elab "eq_as_reals" : tactic => do
     let goalType ← goal.getType
     trace[ENNRealArith.final] m!"Checking if goal is ENNReal.ofReal equality: {goalType}"
 
-    -- Check if we have ENNReal.ofReal x = ENNReal.ofReal y
-    if goalType.isAppOf ``Eq && goalType.getAppArgs.size >= 3 then
-      let lhs := goalType.getAppArgs[1]!
-      let rhs := goalType.getAppArgs[2]!
+    try
+      -- Use congr to reduce to Real equality
+      evalTactic (← `(tactic| congr 1))
 
-      if lhs.isAppOf ``ENNReal.ofReal && rhs.isAppOf ``ENNReal.ofReal then
-        trace[ENNRealArith.final] "Found ENNReal.ofReal equality, converting to Real"
-        try
-          -- Use congr to reduce to Real equality
-          evalTactic (← `(tactic| congr 1))
+      -- Prove non-negativity of toReal expressions
+      evalTactic (← `(tactic| all_goals (first | apply ENNReal.toReal_nonneg | skip)))
+      evalTactic (← `(tactic| simp only [ENNReal.toReal_ofReal ENNReal.toReal_nonneg]))
+      let goal ← getMainGoal
+      trace[ENNRealArith.final] m!"Applied congr and proved non-negativity, now solving Real equality for {goal}"
 
-          -- Prove non-negativity of toReal expressions
-          evalTactic (← `(tactic| all_goals (first | apply ENNReal.toReal_nonneg | skip)))
-          evalTactic (← `(tactic| simp only [ENNReal.toReal_ofReal ENNReal.toReal_nonneg]))
-          let goal ← getMainGoal
-          trace[ENNRealArith.final] m!"Applied congr and proved non-negativity, now solving Real equality for {goal}"
-
-        catch e =>
-          trace[ENNRealArith.final] m!"Could not handle ofReal equality: {e.toMessageData}"
+    catch e =>
+      trace[ENNRealArith.final] m!"Could not handle ofReal equality: {e.toMessageData}"
 
     try
       let goal ← getMainGoal

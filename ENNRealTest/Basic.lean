@@ -14,7 +14,8 @@ lemma test_with_vars {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
 
 lemma test_eq_as_reals_inverse_1 : (5 : ENNReal)⁻¹ = 1 / 5 := by eq_as_reals
 
-
+lemma test_extremely_deep_nesting :
+  (((((1 : ENNReal) + 1) + 1) + 1) + ((1 + 1) + 1)) + (((1 + 1) + (1 + 1)) + ((1 + 1) + (1 + 1))) = 15 := by eq_as_reals
 
 lemma test_fraction_chain_1 : (12 : ENNReal) / 3 / 2 = 2 := by
   calc 12 / 3 / 2
