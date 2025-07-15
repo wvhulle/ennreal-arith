@@ -2,17 +2,19 @@ import ENNRealArith
 
 open ENNReal
 
+set_option profiler true
 
 -- set_option trace.ENNRealArith.search true in
 -- set_option trace.ENNRealArith.conversion true in
 -- set_option trace.ENNRealArith.lifting true in
 -- set_option trace.ENNRealArith.debug true in
 -- set_option trace.ENNRealArith.final true in
-lemma test_with_vars {a b : ENNReal} (ha : a ≠ ⊤) (hb : b ≠ ⊤) :
+lemma test_with_vars {a b : ENNReal} :
   a + b = b + a := by
   eq_as_reals
 
 lemma test_eq_as_reals_inverse_1 : (5 : ENNReal)⁻¹ = 1 / 5 := by eq_as_reals
+
 
 lemma test_extremely_deep_nesting :
   (((((1 : ENNReal) + 1) + 1) + 1) + ((1 + 1) + 1)) + (((1 + 1) + (1 + 1)) + ((1 + 1) + (1 + 1))) = 15 := by eq_as_reals
@@ -39,6 +41,11 @@ lemma test_fraction_chain_1 : (12 : ENNReal) / 3 / 2 = 2 := by
   _ = 2 := by
     norm_num
 
+-- set_option trace.ENNRealArith.conversion true in
+-- set_option trace.ENNRealArith.lifting true in
+-- set_option trace.ENNRealArith.debug true in
+-- set_option trace.ENNRealArith.final true in
+set_option trace.ENNRealArith.search true in
 lemma test_fraction_chain_1_auto : (12 : ENNReal) / 3 / 2 = 2 := by
   eq_as_reals
 
