@@ -176,17 +176,18 @@ partial def findENNVarExpr (e : Expr) : MetaM (Array ENNRealExpr) := do
 
   return literals
 
+
 def tryReflexiveGoal (goalType : Expr) : TacticM Bool := do
   if goalType.getAppArgs.size < 3 then return false
-  
+
   let lhs := goalType.getAppArgs[1]!
   let rhs := goalType.getAppArgs[2]!
-  
+
   if lhs != rhs then return false
-  
+
   let reflexiveRelations := [``Eq, ``LE.le, ``GE.ge]
   let isReflexiveRelation := reflexiveRelations.any (goalType.isAppOf ·)
-  
+
   if isReflexiveRelation then
     evalTactic (← `(tactic| rfl))
     return true
@@ -273,7 +274,9 @@ def runFinalComputation (initialGoalState : Tactic.SavedState) : TacticM Unit :=
       all_goals (first | apply ENNReal.toReal_nonneg | skip) <;>
       simp only [ENNReal.toReal_ofReal ENNReal.toReal_nonneg]))
     let goal ← getMainGoal
+
     trace[ENNRealArith.final] m!"Applied Real conversion tactics, now solving for {goal}"
+
   catch e =>
     trace[ENNRealArith.final] m!"Could not handle ofReal conversion: {e.toMessageData}"
 
@@ -281,12 +284,17 @@ def runFinalComputation (initialGoalState : Tactic.SavedState) : TacticM Unit :=
     let goal ← getMainGoal
     trace[ENNRealArith.final] m!"Final computation on goal with norm_num: {goal}"
 
-    evalTactic (← `(tactic| all_goals (first | congr 1 ; norm_num | norm_num | skip)))
+    -- First try congr to see what we get
+    evalTactic (← `(tactic| all_goals (congr 1)))
+
+
+    evalTactic (← `(tactic| all_goals norm_num))
 
     let remainingGoals ← getUnsolvedGoals
     if !remainingGoals.isEmpty then
       let goal ← getMainGoal
-      trace[ENNRealArith.final] m!"norm_num left unsolved goals {goal}, trying ring"
+      let goalType ← goal.getType
+      trace[ENNRealArith.final] m!"norm_num left unsolved goal: {goalType}"
       evalTactic (← `(tactic| all_goals ring_nf))
     let finalGoals ← getUnsolvedGoals
     if finalGoals.isEmpty then
@@ -300,7 +308,7 @@ def runFinalComputation (initialGoalState : Tactic.SavedState) : TacticM Unit :=
     try
       restoreState initialGoalState
       trace[ENNRealArith.final] "Trying ENNReal algebraic fallback tactics"
-      evalTactic (← `(tactic| first | ac_rfl | simp only [add_comm, mul_comm] | ring_nf | skip))
+      evalTactic (← `(tactic| first | ac_rfl | ring_nf | skip))
       let goals ← getUnsolvedGoals
       if goals.isEmpty then
         trace[ENNRealArith.final] "Successfully solved with ENNReal algebraic fallback"

@@ -9,6 +9,13 @@ set_option trace.ENNRealArith.conversion true in
 set_option trace.ENNRealArith.lifting true in
 set_option trace.ENNRealArith.debug true in
 set_option trace.ENNRealArith.final true in
+example: (1 : ENNReal) = 2 := by
+  fail_if_success eq_as_reals
+  sorry
+
+
+
+
 lemma test_with_vars {a b : ENNReal} :
   a + b = b + a := by
   eq_as_reals
@@ -761,10 +768,6 @@ example: (2 : ENNReal) > 1 := by
 
 
 
-
-example: (1 : ENNReal) = 2 := by
-  fail_if_success eq_as_reals
-  sorry
 
 
 
