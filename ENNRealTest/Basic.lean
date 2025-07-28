@@ -1,14 +1,21 @@
 import ENNRealArith
-
+import Mathlib.Tactic.Basic -- For fails_if_succeeds
 open ENNReal
 
-set_option profiler true
+-- set_option profiler true
 
--- set_option trace.ENNRealArith.search true in
--- set_option trace.ENNRealArith.conversion true in
--- set_option trace.ENNRealArith.lifting true in
--- set_option trace.ENNRealArith.debug true in
--- set_option trace.ENNRealArith.final true in
+set_option trace.ENNRealArith.expr_search true in
+set_option trace.ENNRealArith.enn_conversion true in
+set_option trace.ENNRealArith.ofreal_lifting true in
+set_option trace.ENNRealArith.debug true in
+set_option trace.ENNRealArith.real_computation true in
+example: (1 : ENNReal) = 2 := by
+  fail_if_success eq_as_reals
+  sorry
+
+
+
+
 lemma test_with_vars {a b : ENNReal} :
   a + b = b + a := by
   eq_as_reals
@@ -753,3 +760,17 @@ lemma test_max_stress_3 : ((10 : ENNReal) / 10 + 20 / 20 + 30 / 30) * 2 = 6 := b
   eq_as_reals
 
 -- end FractionInverseStressTests
+
+
+example: (2 : ENNReal) > 1 := by
+  eq_as_reals
+
+
+
+
+
+
+
+example: (1 : ENNReal) > 2 := by
+  fail_if_success eq_as_reals
+  sorry
