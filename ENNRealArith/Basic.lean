@@ -30,6 +30,7 @@ def fullyLifted (e : Expr) : Bool :=
   | .app (.const ``ENNReal.ofReal _) _ => true
   | .app (.app (.app (.const ``OfNat.ofNat _) (.const ``ENNReal _)) (.lit _)) _ => true
   | .app (.app (.const ``Nat.cast _) (.const ``ENNReal _)) (.lit _) => true
+  | .app (.const ``Top.top _) (.const ``ENNReal _) => true
   | _ => false
 
 def isReadyForFinalComputation (goalType : Expr) : Bool :=
@@ -83,6 +84,25 @@ partial def findENNVarExpr (e : Expr) : MetaM (Array ENNRealExpr) := do
   | .app (.const ``ofNNReal _) _ =>
     literals := literals.push (ENNRealExpr.other e)
     trace[ENNRealArith.expr_search] m!"Found ofNNReal expression: {e}"
+  | .app (.app (.const ``Sup.sup _) _) _ =>
+    literals := literals.push (ENNRealExpr.other e)
+    trace[ENNRealArith.expr_search] m!"Found ENNReal supremum: {e}"
+  | .app (.app (.const ``Inf.inf _) _) _ =>
+    literals := literals.push (ENNRealExpr.other e)
+    trace[ENNRealArith.expr_search] m!"Found ENNReal infimum: {e}"
+  | .app (.app (.const ``HSub.hSub _) _) _ =>
+    literals := literals.push (ENNRealExpr.other e)
+    trace[ENNRealArith.expr_search] m!"Found ENNReal subtraction: {e}"
+  | .app (.app (.const ``Sub.sub _) _) _ =>
+    literals := literals.push (ENNRealExpr.other e)
+    trace[ENNRealArith.expr_search] m!"Found ENNReal subtraction: {e}"
+  | .app (.const ``Top.top _) (.const ``ENNReal _) =>
+    literals := literals.push (ENNRealExpr.other e)
+    trace[ENNRealArith.expr_search] m!"Found ENNReal infinity: {e}"
+  | .app (.app (.const ``Coe.coe _) _) _ => 
+    if e.getAppArgs.any (·.constName? == some ``ENNReal) then
+      literals := literals.push (ENNRealExpr.other e)
+      trace[ENNRealArith.expr_search] m!"Found ENNReal coercion: {e}"
   | _ => pure ()
 
   match e with
