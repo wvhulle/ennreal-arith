@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -e
+
+
+echo "Building project..."
+if ! lake build; then
+    echo "Build failed!"
+    exit 1
+fi
+echo "Build successful!"
+
+echo "Running tests..."
+if ! lake test; then
+    echo "Tests failed!"
+    exit 1
+fi
+echo "Tests passed!"
+
+echo "All pre-commit checks passed!"
