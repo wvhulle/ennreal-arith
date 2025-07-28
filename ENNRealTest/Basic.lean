@@ -4,11 +4,11 @@ open ENNReal
 
 -- set_option profiler true
 
-set_option trace.ENNRealArith.expr_search true in
-set_option trace.ENNRealArith.enn_conversion true in
-set_option trace.ENNRealArith.ofreal_lifting true in
-set_option trace.ENNRealArith.debug true in
-set_option trace.ENNRealArith.real_computation true in
+-- set_option trace.ENNRealArith.expr_search true in
+-- set_option trace.ENNRealArith.enn_conversion true in
+-- set_option trace.ENNRealArith.ofreal_lifting true in
+-- set_option trace.ENNRealArith.debug true in
+-- set_option trace.ENNRealArith.real_computation true in
 example: (1 : ENNReal) = 2 := by
   fail_if_success eq_as_reals
   sorry
@@ -40,7 +40,7 @@ lemma test_subtraction_with_zero : (7 : ENNReal) - 0 = 7 := by
   simp  -- This should work with simp
 
 -- Test that mixed arithmetic with subtraction is recognized
-example : (10 : ENNReal) * 2 - 5 = 15 := by  
+example : (10 : ENNReal) * 2 - 5 = 15 := by
   fail_if_success eq_as_reals  -- Shows tactic recognizes mixed operations
   sorry
 

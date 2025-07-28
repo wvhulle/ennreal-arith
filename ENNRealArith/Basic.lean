@@ -99,7 +99,7 @@ partial def findENNVarExpr (e : Expr) : MetaM (Array ENNRealExpr) := do
   | .app (.const ``Top.top _) (.const ``ENNReal _) =>
     literals := literals.push (ENNRealExpr.other e)
     trace[ENNRealArith.expr_search] m!"Found ENNReal infinity: {e}"
-  | .app (.app (.const ``Coe.coe _) _) _ => 
+  | .app (.app (.const ``Coe.coe _) _) _ =>
     if e.getAppArgs.any (·.constName? == some ``ENNReal) then
       literals := literals.push (ENNRealExpr.other e)
       trace[ENNRealArith.expr_search] m!"Found ENNReal coercion: {e}"
