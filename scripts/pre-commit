@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+# Check if we're in the correct directory
+if [ ! -f "lakefile.lean" ]; then
+    echo "❌ Not in a Lean project directory (lakefile.lean not found)"
+    exit 1
+fi
+
+# Build the project
+echo "🔨 Building project..."
+if ! lake build; then
+    echo "❌ Build failed!"
+    exit 1
+fi
+echo "✅ Build successful!"
+
+# Run tests
+echo "🧪 Running tests..."
+if ! lake test; then
+    echo "❌ Tests failed!"
+    exit 1
+fi
+echo "✅ Tests passed!"
+
+echo "🎉 All pre-commit checks passed!"

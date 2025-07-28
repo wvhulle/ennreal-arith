@@ -2,8 +2,8 @@
 
 pkgs.mkShell {
   buildInputs = with pkgs; [
-    # Lean 4 and Lake
-    lean4
+    # Elan - Lean version manager
+    elan
     
     # Git for version control
     git
@@ -20,65 +20,13 @@ pkgs.mkShell {
   ];
 
   shellHook = ''
-    echo "Entering Lean 4 development environment..."
-    echo "Lean version: $(lean --version)"
-    echo "Lake version: $(lake --version)"
-    
-    # Setup pre-commit hooks automatically
-    if [ ! -f .git/hooks/pre-commit ]; then
-      echo "Setting up pre-commit hook..."
+    # Setup pre-commit hook if it doesn't exist
+    if [ ! -f .git/hooks/pre-commit ] && [ -d .git ]; then
       mkdir -p .git/hooks
-      cat > .git/hooks/pre-commit << 'EOF'
-#!/usr/bin/env bash
-set -e
-
-echo "🔍 Running pre-commit checks..."
-
-# Check if we're in the correct directory
-if [ ! -f "lakefile.lean" ]; then
-    echo "❌ Not in a Lean project directory (lakefile.lean not found)"
-    exit 1
-fi
-
-# Build the project
-echo "🔨 Building project..."
-if ! lake build; then
-    echo "❌ Build failed!"
-    exit 1
-fi
-echo "✅ Build successful!"
-
-# Run tests
-echo "🧪 Running tests..."
-if ! lake test; then
-    echo "❌ Tests failed!"
-    exit 1
-fi
-echo "✅ Tests passed!"
-
-# Check for any uncommitted changes to critical files
-if git diff --cached --name-only | grep -E "\.(lean|toml)$" > /dev/null; then
-    echo "📋 Lean files being committed:"
-    git diff --cached --name-only | grep -E "\.(lean|toml)$" | sed 's/^/  - /'
-fi
-
-echo "🎉 All pre-commit checks passed!"
-echo "Ready to commit!"
-EOF
+      cp scripts/pre-commit .git/hooks/pre-commit
       chmod +x .git/hooks/pre-commit
-      echo "Pre-commit hook installed successfully!"
-    else
-      echo "Pre-commit hook already exists."
+      echo "✅ Pre-commit hook installed"
     fi
-    
-    # Check if we're in a git repository
-    if [ -d .git ]; then
-      echo "Git repository detected."
-    else
-      echo "Warning: Not in a git repository."
-    fi
-    
-    echo "Ready for development!"
   '';
 
   # Environment variables
