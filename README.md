@@ -1,6 +1,6 @@
 # Arithmetic simplification for ENNReal
 
-ENNReal appears frequently in Mathlib's probability theory and measure theory. This library provides a convenience tactic `eq_as_reals` for ENNReal (extended non-negative real) numbers or arithmetic expressions. 
+ENNReal appears frequently in Mathlib's probability theory and measure theory. This library provides a tactic `eq_as_reals` for ENNReal (extended non-negative real) numbers or arithmetic expressions. 
 
 ## Installation
 
@@ -41,12 +41,4 @@ example (a : ℕ) (ha : a ≠ 0) : (↑a : ENNReal) / ↑a = 1 := by eq_as_reals
 
 example (a b c : ℕ) (hc : c ≠ 0) : 
   (↑(a * c) : ENNReal) / (↑(b * c)) = ↑a / ↑b := by eq_as_reals
-```
-
-## Testing
-
-To run unit and integration tests, use the following command:
-
-```bash
-lake test
 ```
