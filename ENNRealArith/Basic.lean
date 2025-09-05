@@ -155,21 +155,13 @@ def lift_operators : TacticM Unit := do
       break
     previousGoalType := some currentType
 
-
-def solveWithRealArithmetic : TacticM Unit := do
-  evalTactic (← `(tactic| all_goals norm_num))
-
-  if !(← getUnsolvedGoals).isEmpty then
-    trace[ENNRealArith.real_computation] "norm_num incomplete, trying ring_nf"
-    evalTactic (← `(tactic| all_goals ring_nf))
-
 def reduce (initialGoalState : Tactic.SavedState) : TacticM Unit := do
   trace[ENNRealArith.real_computation] "Converting ENNReal goal to Real arithmetic"
-
+  
   -- Try real arithmetic approach
   try
     evalTactic (← `(tactic|
-    all_goals (first | congr 1 | apply ENNReal.toReal_nonneg) <;> norm_num))
+      all_goals (first | congr 1 | apply ENNReal.toReal_nonneg) <;> norm_num))
     if (← getUnsolvedGoals).isEmpty then
       trace[ENNRealArith.real_computation] "Successfully solved with real arithmetic"
       return
@@ -184,17 +176,17 @@ def reduce (initialGoalState : Tactic.SavedState) : TacticM Unit := do
       return
   catch _ => pure ()
 
-  restoreState initialGoalState
   throwError "eq_as_reals failed: Could not prove the goal."
 
 elab "eq_as_reals" : tactic =>
   withMainContext do
     let goalType ← whnf (← (← getMainGoal).getType)
     let initialGoalState ← saveState
-
-    try
-      evalTactic (← `(tactic| rfl))
-    catch _ =>
-      lift_atoms goalType
-      lift_operators
-      reduce initialGoalState
+    
+    -- Try reflexivity first
+    try evalTactic (← `(tactic| rfl)); return catch _ => pure ()
+    
+    -- Apply lifting and reduction
+    lift_atoms goalType
+    lift_operators
+    reduce initialGoalState
