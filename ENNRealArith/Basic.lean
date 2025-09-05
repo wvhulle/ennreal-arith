@@ -40,80 +40,46 @@ def isReadyForFinalComputation (goalType : Expr) : Bool :=
   args.size >= 3 && fullyLifted args[1]! && fullyLifted args[2]!
 
 
-structure FiniteVar where
+structure FiniteExpr where
   expr : Expr
   proof : Expr
 
 
 
-def maybeFiniteFVar (e: Expr) : MetaM (Option FiniteVar) := do
-  if !e.isFVar then return none
-  let ctx ← getLCtx
-  ctx.findDeclM? fun decl => do
+def contextDeclAssumesFiniteFVar (contextDecl : Expr) (maybeFiniteE : Expr)  : Bool :=
+  let t := Expr.const ``Top.top []
+  match contextDecl with
+  -- lhs ≠ ⊤
+  | .app ( .app ( .app (.const ``Ne _) _) lhs) rhs => (lhs == maybeFiniteE  && rhs == t) || (rhs == maybeFiniteE && lhs == maybeFiniteE)
+  -- ¬ ( lhs = ⊤ )
+  | .app (.const ``Not _) (.app (.app (.app (.const ``Eq _) _) lhs) rhs) => (lhs == maybeFiniteE  && rhs == t) || (rhs == maybeFiniteE && lhs == maybeFiniteE)
+  | _ => false
+
+
+def maybeFiniteFVar (e: Expr) : TacticM (Option FiniteExpr ) := do
+  if e.isFVar then
+    let ctx ← getLCtx
+    ctx.findDeclM? fun decl => do
     if decl.isImplementationDetail then return none
-    let declType := decl.type
-    if isFinitePattern e declType then
-      return some (FiniteVar.mk e decl.toExpr)
-    else
-      return none
-where
-  isFinitePattern (e : Expr) (declType : Expr) : Bool :=
-    match declType with
-    | .app (.app (.app (.const ``Ne _) _) lhs) (.app (.const ``Top.top _) _) => lhs == e
-    | .app (.const ``Not _) (.app (.app (.app (.const ``Eq _) _) lhs) (.app (.const ``Top.top _) _)) => lhs == e
-    | _ => false
-
-
-
+      if contextDeclAssumesFiniteFVar decl.type e  then
+        return some ⟨e, decl.toExpr ⟩
+      else
+        return none
+  else
+    pure none
 
 inductive ENNRealExpr
-| finite_var: FiniteVar → ENNRealExpr
-| other: Expr → ENNRealExpr
+| finite_free_var: FiniteExpr → ENNRealExpr
+| no_finite_free_var: Expr → ENNRealExpr
 
 partial def findENNVarExpr (e : Expr) : MetaM (Array ENNRealExpr) := do
   let mut literals := #[]
-
   match e with
-  | .fvar _ =>
-    if let some finite_var ← maybeFiniteFVar e then
-      literals := literals.push (ENNRealExpr.finite_var finite_var)
-      trace[ENNRealArith.expr_search] m!"Found finite variable: {finite_var.expr}"
-  | .app (.app (.app (.const ``OfNat.ofNat _) (.const ``ENNReal _)) (.lit _)) _ =>
-    literals := literals.push (ENNRealExpr.other e)
-    trace[ENNRealArith.expr_search] m!"Found ENNReal literal: {e}"
-  | .app (.const ``ofNNReal _) _ =>
-    literals := literals.push (ENNRealExpr.other e)
-    trace[ENNRealArith.expr_search] m!"Found ofNNReal expression: {e}"
-  | .app (.app (.const ``Sup.sup _) _) _ =>
-    literals := literals.push (ENNRealExpr.other e)
-    trace[ENNRealArith.expr_search] m!"Found ENNReal supremum: {e}"
-  | .app (.app (.const ``Inf.inf _) _) _ =>
-    literals := literals.push (ENNRealExpr.other e)
-    trace[ENNRealArith.expr_search] m!"Found ENNReal infimum: {e}"
-  | .app (.app (.const ``HSub.hSub _) _) _ =>
-    literals := literals.push (ENNRealExpr.other e)
-    trace[ENNRealArith.expr_search] m!"Found ENNReal subtraction: {e}"
-  | .app (.app (.const ``Sub.sub _) _) _ =>
-    literals := literals.push (ENNRealExpr.other e)
-    trace[ENNRealArith.expr_search] m!"Found ENNReal subtraction: {e}"
-  | .app (.const ``Top.top _) (.const ``ENNReal _) =>
-    literals := literals.push (ENNRealExpr.other e)
-    trace[ENNRealArith.expr_search] m!"Found ENNReal infinity: {e}"
-  | .app (.app (.const ``Coe.coe _) _) _ =>
-    if e.getAppArgs.any (·.constName? == some ``ENNReal) then
-      literals := literals.push (ENNRealExpr.other e)
-      trace[ENNRealArith.expr_search] m!"Found ENNReal coercion: {e}"
-  | _ => pure ()
-
-  match e with
+  | .app (.app (.app (.const ``OfNat.ofNat _) (.const ``ENNReal _)) (.lit _)) _ |
+    .app (.const ``ofNNReal _) _ =>
+    literals := literals.push (ENNRealExpr.no_finite_free_var e)
   | .app f a => literals := literals ++ (← findENNVarExpr f) ++ (← findENNVarExpr a)
-  | .lam _ _ b _ | .forallE _ _ b _ | .mdata _ b | .proj _ _ b =>
-    literals := literals ++ (← findENNVarExpr b)
-  | .letE _ _ _ _ _ =>
-    let reducedExpr ← whnf e
-    literals := literals ++ (← findENNVarExpr reducedExpr)
   | _ => pure ()
-
   return literals
 
 
@@ -131,30 +97,27 @@ def tryReflexiveGoal (goalType : Expr) : TacticM Bool := do
   catch _ =>
     return false
 
+def convertENNExpr (ennExpr : ENNRealExpr) : TacticM Unit := do
+  match ennExpr with
+  | .finite_free_var ⟨expr, proof⟩ =>
+    trace[ENNRealArith.enn_conversion] m!"Converting finite var {expr} with proof {proof}"
+    let proofSyntax ← proof.toSyntax
+    evalTactic (← `(tactic| rw [← ENNReal.ofReal_toReal $proofSyntax]))
+  | .no_finite_free_var expr =>
+    trace[ENNRealArith.enn_conversion] m!"Converting literal {expr} with norm_num"
+    let exprSyntax ← expr.toSyntax
+    evalTactic (← `(tactic| rw [← ENNReal.ofReal_toReal (by norm_num : $exprSyntax ≠ ⊤)]))
+
 def processENNExpressions (goalType : Expr) : TacticM Unit := do
-  let enn_expressions <- findENNVarExpr goalType
-  trace[ENNRealArith.enn_conversion] m!"Found {enn_expressions.size} ENNReal expressions to convert"
+  let ennExpressions ← findENNVarExpr goalType
+  trace[ENNRealArith.enn_conversion] m!"Found {ennExpressions.size} ENNReal expressions to convert"
 
-  for enn_expr in enn_expressions do
-    try
-      match enn_expr with
-      | ENNRealExpr.finite_var finite_var =>
-        let enn_expr := finite_var.expr
-        let proof := finite_var.proof
-        trace[ENNRealArith.enn_conversion] m!"Converting finite var {enn_expr} with proof {proof}"
-        let proofSyntax ← proof.toSyntax
-        evalTactic (← `(tactic| rw [← ENNReal.ofReal_toReal $proofSyntax]))
-      | ENNRealExpr.other enn_expr =>
-        trace[ENNRealArith.enn_conversion] m!"Converting literal {enn_expr} with norm_num"
-        let enn_syntax ← enn_expr.toSyntax
-        evalTactic (← `(tactic| rw [← ENNReal.ofReal_toReal (by norm_num : $enn_syntax ≠ ⊤)]))
-    catch _ =>
-      continue
+  for ennExpr in ennExpressions do
+    try convertENNExpr ennExpr
+    catch _ => continue
 
-def runLiftingPhases : TacticM Unit := do
-  trace[ENNRealArith.ofreal_lifting] m!"Starting ofReal lifting on: {← getMainGoal}"
-
-  let liftingPhases := [
+def getLiftingRules : TacticM (Array (TSyntax `tactic)) := do
+  return #[
     ← `(tactic| rw [← ENNReal.ofReal_inv_of_pos (by norm_num : (0 : ℝ) < _)]),
     ← `(tactic| rw [← ENNReal.ofReal_div_of_pos (by norm_num : (0 : ℝ) < _)]),
     ← `(tactic| rw [← ENNReal.ofReal_mul]),
@@ -163,65 +126,77 @@ def runLiftingPhases : TacticM Unit := do
     ← `(tactic| rw [← ENNReal.ofReal_zero])
   ]
 
+def tryLiftingRule (rule : TSyntax `tactic) : TacticM Bool := do
+  let goalBefore ← (← getMainGoal).getType
+  let countBefore := countOfRealOccurrences goalBefore
+
+  try
+    evalTactic rule
+    try evalTactic (← `(tactic| simp only [ENNReal.toReal_ofReal ENNReal.toReal_nonneg]))
+    catch _ => pure ()
+
+    let goalAfter ← (← getMainGoal).getType
+    let countAfter := countOfRealOccurrences goalAfter
+
+    if countAfter < countBefore then
+      trace[ENNRealArith.ofreal_lifting] m!"Lifting progress: {countBefore} → {countAfter} ofReal occurrences"
+
+    return (countAfter < countBefore || isReadyForFinalComputation goalAfter)
+  catch _ =>
+    return false
+
+def runLiftingPhases : TacticM Unit := do
+  trace[ENNRealArith.ofreal_lifting] m!"Starting ofReal lifting on: {← getMainGoal}"
+
+  let liftingRules ← getLiftingRules
   let mut previousGoalType : Option Expr := none
+
   for iteration in List.range 10 do
     trace[ENNRealArith.ofreal_lifting] m!"Lifting iteration {iteration + 1}"
 
-    for phase in liftingPhases do
-      try
-        let goalBefore ← (← getMainGoal).getType
-        let countBefore := countOfRealOccurrences goalBefore
-
-        evalTactic phase
-        try evalTactic (← `(tactic| simp only [ENNReal.toReal_ofReal ENNReal.toReal_nonneg]))
-        catch _ => pure ()
-
-        let goalAfter ← (← getMainGoal).getType
-        let countAfter := countOfRealOccurrences goalAfter
-
-        if countAfter < countBefore then
-          trace[ENNRealArith.ofreal_lifting] m!"Lifting progress: {countBefore} → {countAfter} ofReal occurrences"
-
-        if isReadyForFinalComputation goalAfter then
+    let mut madeProgress := false
+    for rule in liftingRules do
+      if ← tryLiftingRule rule then
+        madeProgress := true
+        if isReadyForFinalComputation (← (← getMainGoal).getType) then
           trace[ENNRealArith.ofreal_lifting] "Goal ready for final computation"
-          break
-      catch _ => continue
+          return
 
     let currentType ← (← getMainGoal).getType
-    if some currentType == previousGoalType then
+    if some currentType == previousGoalType || !madeProgress then
       trace[ENNRealArith.ofreal_lifting] "No progress made, stopping iterations"
       break
     previousGoalType := some currentType
-    if isReadyForFinalComputation currentType then
-      trace[ENNRealArith.ofreal_lifting] "Goal ready after iteration"
-      break
+
+def convertToRealArithmetic : TacticM Unit := do
+  evalTactic (← `(tactic|
+    (first | congr 1 | rw [← ENNReal.toReal_lt_toReal_iff] | rw [← ENNReal.toReal_le_toReal_iff] | skip) <;>
+    all_goals (first | apply ENNReal.toReal_nonneg | skip) <;>
+    simp only [ENNReal.toReal_ofReal ENNReal.toReal_nonneg]))
+
+def solveWithRealArithmetic : TacticM Unit := do
+  evalTactic (← `(tactic| all_goals (first | congr 1 ; norm_num | norm_num)))
+
+  if !(← getUnsolvedGoals).isEmpty then
+    trace[ENNRealArith.real_computation] "norm_num incomplete, trying ring_nf"
+    evalTactic (← `(tactic| all_goals ring_nf))
+
+def tryENNRealFallback : TacticM Unit := do
+  trace[ENNRealArith.real_computation] "Trying ENNReal algebraic fallback"
+  evalTactic (← `(tactic| first | ac_rfl | ring_nf | skip))
 
 def runFinalComputation (initialGoalState : Tactic.SavedState) : TacticM Unit := do
   trace[ENNRealArith.real_computation] "Converting ENNReal goal to Real arithmetic"
 
-  let convertToReals := ← `(tactic|
-    (first | congr 1 | rw [← ENNReal.toReal_lt_toReal_iff] | rw [← ENNReal.toReal_le_toReal_iff] | skip) <;>
-    all_goals (first | apply ENNReal.toReal_nonneg | skip) <;>
-    simp only [ENNReal.toReal_ofReal ENNReal.toReal_nonneg])
-
-  let solveWithArithmetic := ← `(tactic| all_goals (first | congr 1 ; norm_num | norm_num))
-  let tryRingNormalization := ← `(tactic| all_goals ring_nf)
-  let tryENNRealFallback := ← `(tactic| first | ac_rfl | ring_nf | skip)
-
   try
-    evalTactic convertToReals
+    convertToRealArithmetic
     trace[ENNRealArith.real_computation] m!"Real conversion successful: {← getMainGoal}"
   catch e =>
     trace[ENNRealArith.real_computation] m!"Real conversion failed: {e.toMessageData}"
 
   try
     trace[ENNRealArith.real_computation] m!"Attempting norm_num on: {← getMainGoal}"
-    evalTactic solveWithArithmetic
-
-    let remainingGoals ← getUnsolvedGoals
-    if !remainingGoals.isEmpty then
-      trace[ENNRealArith.real_computation] m!"norm_num incomplete, trying ring_nf on: {← getMainGoal}"
-      evalTactic tryRingNormalization
+    solveWithRealArithmetic
 
     if (← getUnsolvedGoals).isEmpty then
       trace[ENNRealArith.real_computation] "Successfully solved with real arithmetic"
@@ -233,8 +208,7 @@ def runFinalComputation (initialGoalState : Tactic.SavedState) : TacticM Unit :=
     trace[ENNRealArith.real_computation] m!"Real arithmetic failed: {e.toMessageData}"
     try
       restoreState initialGoalState
-      trace[ENNRealArith.real_computation] "Trying ENNReal algebraic fallback"
-      evalTactic tryENNRealFallback
+      tryENNRealFallback
       if (← getUnsolvedGoals).isEmpty then
         trace[ENNRealArith.real_computation] "Solved with ENNReal fallback"
         return
@@ -243,19 +217,13 @@ def runFinalComputation (initialGoalState : Tactic.SavedState) : TacticM Unit :=
     restoreState initialGoalState
     throwError "eq_as_reals failed: Could not prove the goal."
 
-elab "eq_as_reals" : tactic => do
+elab "eq_as_reals" : tactic =>
   withMainContext do
-    let goal ← getMainGoal
-    let goalType ← goal.getType
+    let goalType ← whnf (← (← getMainGoal).getType)
     let initialGoalState ← saveState
 
-    let goalType ← whnf goalType
-
-    if ← tryReflexiveGoal goalType then
-      return
+    if ← tryReflexiveGoal goalType then return
 
     processENNExpressions goalType
-
     runLiftingPhases
-
     runFinalComputation initialGoalState
