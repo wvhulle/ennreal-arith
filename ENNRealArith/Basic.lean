@@ -21,6 +21,8 @@ initialize
 
 namespace ENNRealArith
 
+def MAX_LIFTING_PASSES : Nat := 10
+
 /- The amount of atoms that should still be lifted by applying operator lifts. -/
 partial def atoms_remaining_lift (e : Expr) : Nat :=
   (if e.isAppOf ``ENNReal.ofReal then 1 else 0) +
@@ -132,68 +134,55 @@ def apply_op_lift_tactic (tactic : TSyntax `tactic) : TacticM Bool := do
   catch _ =>
     return false
 
+
+
 def lift_operators : TacticM Unit := do
   trace[ENNRealArith.ofreal_lifting] m!"Starting ofReal lifting on: {← getMainGoal}"
 
   let liftingRules ← ops_lifting_tactics
   let mut previousGoalType : Option Expr := none
 
-  for iteration in List.range 10 do
+  for iteration in List.range MAX_LIFTING_PASSES do
     trace[ENNRealArith.ofreal_lifting] m!"Lifting iteration {iteration + 1}"
-
+    let mut progress_current_iteration := false
     for rule in liftingRules do
-      if ← apply_op_lift_tactic rule then
-        if isReadyForFinalComputation (← (← getMainGoal).getType) then
-          trace[ENNRealArith.ofreal_lifting] "Goal ready for final computation"
-          return
-
+      let progress_current_tactic ← apply_op_lift_tactic rule
+      if progress_current_tactic then
+        progress_current_iteration := true
     let currentType ← (← getMainGoal).getType
-    if some currentType == previousGoalType then
-      trace[ENNRealArith.ofreal_lifting] "No progress made, stopping iterations"
+    if progress_current_iteration == false then
+      trace[ENNRealArith.ofreal_lifting] m!"No progress made for goal {currentType}, stopping operator lifting iterations"
       break
     previousGoalType := some currentType
 
-def convertToRealArithmetic : TacticM Unit := do
-  evalTactic (← `(tactic|
-    (first | congr 1 | rw [← ENNReal.toReal_lt_toReal_iff] | rw [← ENNReal.toReal_le_toReal_iff] | skip) <;>
-    all_goals (first | apply ENNReal.toReal_nonneg | skip) <;>
-    simp only [ENNReal.toReal_ofReal ENNReal.toReal_nonneg]))
 
 def solveWithRealArithmetic : TacticM Unit := do
-  evalTactic (← `(tactic| all_goals (first | congr 1 ; norm_num | norm_num)))
+  evalTactic (← `(tactic| all_goals norm_num))
 
   if !(← getUnsolvedGoals).isEmpty then
     trace[ENNRealArith.real_computation] "norm_num incomplete, trying ring_nf"
     evalTactic (← `(tactic| all_goals ring_nf))
 
-def tryENNRealFallback : TacticM Unit := do
-  trace[ENNRealArith.real_computation] "Trying ENNReal algebraic fallback"
-  evalTactic (← `(tactic| first | ac_rfl | ring_nf | skip))
-
 def reduce (initialGoalState : Tactic.SavedState) : TacticM Unit := do
   trace[ENNRealArith.real_computation] "Converting ENNReal goal to Real arithmetic"
 
   try
-    convertToRealArithmetic
-    trace[ENNRealArith.real_computation] m!"Real conversion successful: {← getMainGoal}"
-  catch e =>
-    trace[ENNRealArith.real_computation] m!"Real conversion failed: {e.toMessageData}"
-
-  try
-    trace[ENNRealArith.real_computation] m!"Attempting norm_num on: {← getMainGoal}"
-    solveWithRealArithmetic
+    -- Applying congruence of ENNReal.ofNNReal and then solving in reals.
+    evalTactic (← `(tactic|
+    all_goals (first | congr 1 | apply ENNReal.toReal_nonneg) <;> norm_num))
 
     if (← getUnsolvedGoals).isEmpty then
       trace[ENNRealArith.real_computation] "Successfully solved with real arithmetic"
       return
-
-    restoreState initialGoalState
-    throwError "eq_as_reals failed: Could not prove the goal using real arithmetic."
+    else
+      restoreState initialGoalState
+      throwError "eq_as_reals failed: Could not prove the goal using real arithmetic."
   catch e =>
     trace[ENNRealArith.real_computation] m!"Real arithmetic failed: {e.toMessageData}"
     try
       restoreState initialGoalState
-      tryENNRealFallback
+      -- Why is this still needed? Can it be integrated in the try branch?
+      evalTactic (← `(tactic|  ring_nf))
       if (← getUnsolvedGoals).isEmpty then
         trace[ENNRealArith.real_computation] "Solved with ENNReal fallback"
         return
