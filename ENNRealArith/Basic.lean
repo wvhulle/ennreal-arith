@@ -49,23 +49,24 @@ structure FiniteExpr where
 
 
 
-def contextDeclAssumesFiniteFVar (contextDecl : Expr) (maybeFiniteE : Expr)  : Bool :=
-  let t := Expr.const ``Top.top []
+def contextDeclAssumesFiniteFVar (contextDecl : Expr) (maybeFiniteE : Expr) : Bool :=
+  let top := Expr.const ``Top.top []
+  let checkPair (lhs rhs : Expr) : Bool :=
+    (lhs == maybeFiniteE && rhs == top) || (rhs == maybeFiniteE && lhs == top)
+
   match contextDecl with
-  -- lhs ≠ ⊤
-  | .app ( .app ( .app (.const ``Ne _) _) lhs) rhs => (lhs == maybeFiniteE  && rhs == t) || (rhs == maybeFiniteE && lhs == maybeFiniteE)
-  -- ¬ ( lhs = ⊤ )
-  | .app (.const ``Not _) (.app (.app (.app (.const ``Eq _) _) lhs) rhs) => (lhs == maybeFiniteE  && rhs == t) || (rhs == maybeFiniteE && lhs == maybeFiniteE)
+  | .app (.app (.app (.const ``Ne _) _) lhs) rhs => checkPair lhs rhs
+  | .app (.const ``Not _) (.app (.app (.app (.const ``Eq _) _) lhs) rhs) => checkPair lhs rhs
   | _ => false
 
-
-def maybeFiniteFVar (e: Expr) : TacticM (Option FiniteExpr ) := do
+def maybeFiniteFVar (e: Expr) : TacticM (Option FiniteExpr) := do
   if e.isFVar then
     let ctx ← getLCtx
     ctx.findDeclM? fun decl => do
-    if decl.isImplementationDetail then return none
-      if contextDeclAssumesFiniteFVar decl.type e  then
-        return some ⟨e, decl.toExpr ⟩
+      if decl.isImplementationDetail then
+        return none
+      if contextDeclAssumesFiniteFVar decl.type e then
+        return some ⟨e, decl.toExpr⟩
       else
         return none
   else
@@ -76,29 +77,38 @@ inductive ENNRealExpr
 | no_finite_free_var: Expr → ENNRealExpr
 
 /- Search all the atomic expressions with values in the ENNReal numbers, both variables and literals. -/
-partial def search_atoms (e : Expr) : MetaM (Array ENNRealExpr) := do
-  let mut atoms := #[]
-  match e with
-  | .app (.app (.app (.const ``OfNat.ofNat _) (.const ``ENNReal _)) (.lit _)) _
-    | .app (.const ``ofNNReal _) _  =>
-    atoms := atoms.push (ENNRealExpr.no_finite_free_var e)
-  | .app f a => 
-    let leftAtoms ← search_atoms f
-    let rightAtoms ← search_atoms a
-    atoms := atoms ++ leftAtoms ++ rightAtoms
-  | _ => pure ()
+partial def search_atoms (e : Expr) : TacticM (Array ENNRealExpr) := do
+  let rec visit (expr : Expr) : TacticM (Array ENNRealExpr) := do
+    match expr with
+    | .app (.app (.app (.const ``OfNat.ofNat _) (.const ``ENNReal _)) (.lit _)) _
+      | .app (.const ``ofNNReal _) _  =>
+      return #[ENNRealExpr.no_finite_free_var expr]
+    | fvar =>
+      if fvar.isFVar then
+        let finiteVar? ← maybeFiniteFVar fvar
+        match finiteVar? with
+        | some finiteExpr => return #[ENNRealExpr.finite_free_var finiteExpr]
+        | none => return #[ENNRealExpr.no_finite_free_var fvar]
+      else
+        match fvar with
+        | .app f a =>
+          let leftAtoms ← visit f
+          let rightAtoms ← visit a
+          return leftAtoms ++ rightAtoms
+        | _ => return #[]
 
-  -- Simple deduplication: remove exact duplicates
+  let allAtoms ← visit e
+
+  -- Remove exact duplicates
   let mut uniqueAtoms := #[]
-  for atom in atoms do
-    match atom with
-    | ENNRealExpr.no_finite_free_var expr =>
-      if !uniqueAtoms.any (fun a => match a with 
-        | ENNRealExpr.no_finite_free_var e => e.equal expr
-        | _ => false) then
-        uniqueAtoms := uniqueAtoms.push atom
-    | _ => uniqueAtoms := uniqueAtoms.push atom
-  
+  for atom in allAtoms do
+    let isDuplicate := uniqueAtoms.any (fun a => match (a, atom) with
+      | (ENNRealExpr.no_finite_free_var e1, ENNRealExpr.no_finite_free_var e2) => e1.equal e2
+      | (ENNRealExpr.finite_free_var f1, ENNRealExpr.finite_free_var f2) => f1.expr.equal f2.expr
+      | _ => false)
+    if !isDuplicate then
+      uniqueAtoms := uniqueAtoms.push atom
+
   return uniqueAtoms
 
 
@@ -179,7 +189,7 @@ elab "eq_as_reals" : tactic =>
     catch _ =>
       lift_atoms goalType
       lift_operators
-      
+
       try
         evalTactic (← `(tactic|
         all_goals (first | congr 1 | apply ENNReal.toReal_nonneg) <;> norm_num))
