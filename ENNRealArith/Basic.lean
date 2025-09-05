@@ -25,22 +25,22 @@ def MAX_LIFTING_PASSES : Nat := 10
 
 /- The amount of atoms that should still be lifted by applying operator lifts. -/
 partial def atoms_remaining_lift (e : Expr) : Nat :=
-  (if e.isAppOf ``ENNReal.ofReal then 1 else 0) +
-  e.getAppArgs.foldl (· + atoms_remaining_lift ·) 0
+  let rec count (e : Expr) (acc : Nat) : Nat :=
+    let acc' := if e.isAppOf ``ENNReal.ofReal then acc + 1 else acc
+    e.getAppArgs.foldl (fun acc arg => count arg acc) acc'
+  count e 0
 
 def fullyLifted (e : Expr) : Bool :=
-  match e with
-  | .app (.const ``ENNReal.ofReal _) _ => true
-  | .app (.app (.app (.const ``OfNat.ofNat _) (.const ``ENNReal _)) (.lit _)) _ => true
-  | .app (.app (.const ``Nat.cast _) (.const ``ENNReal _)) (.lit _) => true
-  | .app (.const ``Top.top _) (.const ``ENNReal _) => true
-  | _ => false
+  e.isAppOf ``ENNReal.ofReal ||
+  e.isAppOf ``OfNat.ofNat ||
+  e.isAppOf ``Nat.cast ||
+  e.isAppOf ``Top.top
 
 def isReadyForFinalComputation (goalType : Expr) : Bool :=
-  let relations := [``Eq, ``LT.lt, ``LE.le, ``GT.gt, ``GE.ge]
   let args := goalType.getAppArgs
-  relations.any (goalType.isAppOfArity · 3) &&
-  args.size >= 3 && fullyLifted args[1]! && fullyLifted args[2]!
+  args.size >= 3 && 
+  [``Eq, ``LT.lt, ``LE.le, ``GT.gt, ``GE.ge].any (goalType.isAppOfArity · 3) &&
+  fullyLifted args[1]! && fullyLifted args[2]!
 
 
 structure FiniteExpr where
@@ -131,7 +131,7 @@ def lift_atoms (goalType : Expr) : TacticM Unit := do
     try lift_to_real expr
     catch _ => continue
 
-def ops_lifting_tactics : TacticM (Array (TSyntax `tactic)) := do
+def ops_lifting_tactics : TacticM (Array (TSyntax `tactic)) :=
   return #[
     ← `(tactic| rw [← ENNReal.ofReal_inv_of_pos (by norm_num : (0 : ℝ) < _)]),
     ← `(tactic| rw [← ENNReal.ofReal_div_of_pos (by norm_num : (0 : ℝ) < _)]),
