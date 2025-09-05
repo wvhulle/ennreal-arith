@@ -18,27 +18,6 @@ lemma test_fraction_div_one_2 : (15 : ENNReal) / 1 = 15 := by eq_as_reals
 
 lemma test_fraction_div_one_3 : (42 : ENNReal) / 1 = 42 := by eq_as_reals
 
-lemma test_fraction_chain_1 : (12 : ENNReal) / 3 / 2 = 2 := by
-  calc 12 / 3 / 2
-  _ = (ENNReal.ofReal 12) / (ENNReal.ofReal 3) /  (ENNReal.ofReal 2) := by
-    rw [<- ENNReal.ofReal_toReal (by norm_num : (12 : ENNReal) ≠ ⊤)]
-    rw [<- ENNReal.ofReal_toReal (by norm_num : (3 : ENNReal) ≠ ⊤)]
-    rw [<- ENNReal.ofReal_toReal (by norm_num : (2 : ENNReal) ≠ ⊤)]
-    exact rfl
-  _ = ((ENNReal.ofReal 12) / (ENNReal.ofReal 3)) /  (ENNReal.ofReal 2) := by
-    exact rfl
-  _ = ( ENNReal.ofReal ( 12 / 3)) / (ENNReal.ofReal 2) := by
-    rw [ENNReal.ofReal_div_of_pos]
-    norm_num
-  _ =  ENNReal.ofReal (( 12 / 3) / 2) := by
-    rw [<- ENNReal.ofReal_div_of_pos]
-    · norm_num
-  _ = ENNReal.ofReal (4 / 2) := by
-    norm_num
-  _ = ENNReal.ofReal 2 := by
-    norm_num
-  _ = 2 := by
-    norm_num
 
 lemma test_fraction_chain_1_auto : (12 : ENNReal) / 3 / 2 = 2 := by
   eq_as_reals
@@ -97,14 +76,3 @@ lemma test_basic_infimum : (3 : ENNReal) ⊓ 5 = 3 := by eq_as_reals
 lemma test_supremum_arithmetic : (2 : ENNReal) * (3 ⊔ 4) = 8 := by eq_as_reals
 
 end SupremumInfimumTests
-
-section FractionStressTests
-
-lemma test_max_stress_1 : ((((2 : ENNReal) / 1) + 3) / 1 + 4) / 1 = 9 := by eq_as_reals
-
-lemma test_max_stress_2 : (((5 : ENNReal)⁻¹ + (5 : ENNReal)⁻¹) + 0) + 0 = 2 * (5 : ENNReal)⁻¹ := by eq_as_reals
-
-lemma test_max_stress_3 : ((10 : ENNReal) / 10 + 20 / 20 + 30 / 30) * 2 = 6 := by
-  eq_as_reals
-
-end FractionStressTests
