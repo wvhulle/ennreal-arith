@@ -21,9 +21,10 @@ initialize
 
 namespace ENNRealArith
 
-partial def countOfRealOccurrences (e : Expr) : Nat :=
+/- The amount of atoms that should still be lifted by applying operator lifts. -/
+partial def atoms_remaining_lift (e : Expr) : Nat :=
   (if e.isAppOf ``ENNReal.ofReal then 1 else 0) +
-  e.getAppArgs.foldl (· + countOfRealOccurrences ·) 0
+  e.getAppArgs.foldl (· + atoms_remaining_lift ·) 0
 
 def fullyLifted (e : Expr) : Bool :=
   match e with
@@ -72,51 +73,39 @@ inductive ENNRealExpr
 | finite_free_var: FiniteExpr → ENNRealExpr
 | no_finite_free_var: Expr → ENNRealExpr
 
-partial def findENNVarExpr (e : Expr) : MetaM (Array ENNRealExpr) := do
-  let mut literals := #[]
+/- Search all the atomic expressions with values in the ENNReal numbers, both variables and literals. -/
+partial def search_atoms (e : Expr) : MetaM (Array ENNRealExpr) := do
+  let mut atoms := #[]
   match e with
-  | .app (.app (.app (.const ``OfNat.ofNat _) (.const ``ENNReal _)) (.lit _)) _ |
-    .app (.const ``ofNNReal _) _ =>
-    literals := literals.push (ENNRealExpr.no_finite_free_var e)
-  | .app f a => literals := literals ++ (← findENNVarExpr f) ++ (← findENNVarExpr a)
+  | .app (.app (.app (.const ``OfNat.ofNat _) (.const ``ENNReal _)) (.lit _)) _
+    | .app (.const ``ofNNReal _) _  =>
+    atoms := atoms.push (ENNRealExpr.no_finite_free_var e)
+  | .app f a => atoms := atoms ++ (← search_atoms f) ++ (← search_atoms a)
   | _ => pure ()
-  return literals
+
+  return atoms
 
 
-def tryReflexiveGoal (goalType : Expr) : TacticM Bool := do
-  try
-    let args := goalType.getAppArgs
-    guard $ args.size >= 3
-    guard $ args[1]! == args[2]!
-
-    let reflexiveRelations := [``Eq, ``LE.le, ``GE.ge]
-    guard $ reflexiveRelations.any (goalType.isAppOf ·)
-
-    evalTactic (← `(tactic| rfl))
-    return true
-  catch _ =>
-    return false
-
-def convertENNExpr (ennExpr : ENNRealExpr) : TacticM Unit := do
+def lift_to_real (ennExpr : ENNRealExpr) : TacticM Unit := do
   match ennExpr with
   | .finite_free_var ⟨expr, proof⟩ =>
-    trace[ENNRealArith.enn_conversion] m!"Converting finite var {expr} with proof {proof}"
+    trace[ENNRealArith.enn_conversion] m!"Converting free var {expr} with finiteness proof {proof} to a free var in the reals."
     let proofSyntax ← proof.toSyntax
     evalTactic (← `(tactic| rw [← ENNReal.ofReal_toReal $proofSyntax]))
   | .no_finite_free_var expr =>
-    trace[ENNRealArith.enn_conversion] m!"Converting literal {expr} with norm_num"
+    trace[ENNRealArith.enn_conversion] m!"Trying to prove that expression {expr} is finite using `norm_num` and converting to a real."
     let exprSyntax ← expr.toSyntax
     evalTactic (← `(tactic| rw [← ENNReal.ofReal_toReal (by norm_num : $exprSyntax ≠ ⊤)]))
 
-def processENNExpressions (goalType : Expr) : TacticM Unit := do
-  let ennExpressions ← findENNVarExpr goalType
-  trace[ENNRealArith.enn_conversion] m!"Found {ennExpressions.size} ENNReal expressions to convert"
+def lift_atoms (goalType : Expr) : TacticM Unit := do
+  let exprs ← search_atoms goalType
+  trace[ENNRealArith.enn_conversion] m!"Found {exprs.size} ENNReal expressions to convert"
 
-  for ennExpr in ennExpressions do
-    try convertENNExpr ennExpr
+  for expr in exprs do
+    try lift_to_real expr
     catch _ => continue
 
-def getLiftingRules : TacticM (Array (TSyntax `tactic)) := do
+def ops_lifting_tactics : TacticM (Array (TSyntax `tactic)) := do
   return #[
     ← `(tactic| rw [← ENNReal.ofReal_inv_of_pos (by norm_num : (0 : ℝ) < _)]),
     ← `(tactic| rw [← ENNReal.ofReal_div_of_pos (by norm_num : (0 : ℝ) < _)]),
@@ -126,44 +115,40 @@ def getLiftingRules : TacticM (Array (TSyntax `tactic)) := do
     ← `(tactic| rw [← ENNReal.ofReal_zero])
   ]
 
-def tryLiftingRule (rule : TSyntax `tactic) : TacticM Bool := do
+def apply_op_lift_tactic (tactic : TSyntax `tactic) : TacticM Bool := do
   let goalBefore ← (← getMainGoal).getType
-  let countBefore := countOfRealOccurrences goalBefore
+  let countBefore := atoms_remaining_lift goalBefore
 
   try
-    evalTactic rule
-    try evalTactic (← `(tactic| simp only [ENNReal.toReal_ofReal ENNReal.toReal_nonneg]))
-    catch _ => pure ()
+    evalTactic tactic
 
     let goalAfter ← (← getMainGoal).getType
-    let countAfter := countOfRealOccurrences goalAfter
+    let countAfter := atoms_remaining_lift goalAfter
 
-    if countAfter < countBefore then
-      trace[ENNRealArith.ofreal_lifting] m!"Lifting progress: {countBefore} → {countAfter} ofReal occurrences"
+    trace[ENNRealArith.ofreal_lifting] m!"Lifting progress: {countBefore} → {countAfter} ofReal occurrences"
 
-    return (countAfter < countBefore || isReadyForFinalComputation goalAfter)
+    return ↑(countAfter < countBefore)
+
   catch _ =>
     return false
 
-def runLiftingPhases : TacticM Unit := do
+def lift_operators : TacticM Unit := do
   trace[ENNRealArith.ofreal_lifting] m!"Starting ofReal lifting on: {← getMainGoal}"
 
-  let liftingRules ← getLiftingRules
+  let liftingRules ← ops_lifting_tactics
   let mut previousGoalType : Option Expr := none
 
   for iteration in List.range 10 do
     trace[ENNRealArith.ofreal_lifting] m!"Lifting iteration {iteration + 1}"
 
-    let mut madeProgress := false
     for rule in liftingRules do
-      if ← tryLiftingRule rule then
-        madeProgress := true
+      if ← apply_op_lift_tactic rule then
         if isReadyForFinalComputation (← (← getMainGoal).getType) then
           trace[ENNRealArith.ofreal_lifting] "Goal ready for final computation"
           return
 
     let currentType ← (← getMainGoal).getType
-    if some currentType == previousGoalType || !madeProgress then
+    if some currentType == previousGoalType then
       trace[ENNRealArith.ofreal_lifting] "No progress made, stopping iterations"
       break
     previousGoalType := some currentType
@@ -185,7 +170,7 @@ def tryENNRealFallback : TacticM Unit := do
   trace[ENNRealArith.real_computation] "Trying ENNReal algebraic fallback"
   evalTactic (← `(tactic| first | ac_rfl | ring_nf | skip))
 
-def runFinalComputation (initialGoalState : Tactic.SavedState) : TacticM Unit := do
+def reduce (initialGoalState : Tactic.SavedState) : TacticM Unit := do
   trace[ENNRealArith.real_computation] "Converting ENNReal goal to Real arithmetic"
 
   try
@@ -222,8 +207,9 @@ elab "eq_as_reals" : tactic =>
     let goalType ← whnf (← (← getMainGoal).getType)
     let initialGoalState ← saveState
 
-    if ← tryReflexiveGoal goalType then return
-
-    processENNExpressions goalType
-    runLiftingPhases
-    runFinalComputation initialGoalState
+    try
+      evalTactic (← `(tactic| rfl))
+    catch _ =>
+      lift_atoms goalType
+      lift_operators
+      reduce initialGoalState
