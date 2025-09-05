@@ -8,7 +8,7 @@ import Lean
 import Lean.Util.Trace
 import ENNRealArith.Properties
 
-open Lean Meta Elab Tactic ENNReal Qq
+open Lean Meta Elab Tactic ENNReal Std
 
 initialize
   registerTraceClass `ENNRealArith
@@ -38,7 +38,7 @@ def fullyLifted (e : Expr) : Bool :=
 
 def isReadyForFinalComputation (goalType : Expr) : Bool :=
   let args := goalType.getAppArgs
-  args.size >= 3 && 
+  args.size >= 3 &&
   [``Eq, ``LT.lt, ``LE.le, ``GT.gt, ``GE.ge].any (goalType.isAppOfArity · 3) &&
   fullyLifted args[1]! && fullyLifted args[2]!
 
@@ -76,40 +76,36 @@ inductive ENNRealExpr
 | finite_free_var: FiniteExpr → ENNRealExpr
 | no_finite_free_var: Expr → ENNRealExpr
 
+instance : BEq ENNRealExpr where
+  beq a b := match (a, b) with
+    | (ENNRealExpr.no_finite_free_var e1, ENNRealExpr.no_finite_free_var e2) => e1.equal e2
+    | (ENNRealExpr.finite_free_var f1, ENNRealExpr.finite_free_var f2) => f1.expr.equal f2.expr
+    | _ => false
+
+instance : Hashable ENNRealExpr where
+  hash a := match a with
+    | ENNRealExpr.no_finite_free_var e => hash e
+    | ENNRealExpr.finite_free_var f => hash f.expr
+
 /- Search all the atomic expressions with values in the ENNReal numbers, both variables and literals. -/
-partial def search_atoms (e : Expr) : TacticM (Array ENNRealExpr) := do
-  let rec visit (expr : Expr) : TacticM (Array ENNRealExpr) := do
+partial def search_atoms (e : Expr) : TacticM (HashSet ENNRealExpr) := do
+  let rec visit (expr : Expr) (acc : HashSet ENNRealExpr) : TacticM (HashSet ENNRealExpr) := do
     match expr with
     | .app (.app (.app (.const ``OfNat.ofNat _) (.const ``ENNReal _)) (.lit _)) _
       | .app (.const ``ofNNReal _) _  =>
-      return #[ENNRealExpr.no_finite_free_var expr]
-    | fvar =>
-      if fvar.isFVar then
-        let finiteVar? ← maybeFiniteFVar fvar
-        match finiteVar? with
-        | some finiteExpr => return #[ENNRealExpr.finite_free_var finiteExpr]
-        | none => return #[ENNRealExpr.no_finite_free_var fvar]
-      else
-        match fvar with
-        | .app f a =>
-          let leftAtoms ← visit f
-          let rightAtoms ← visit a
-          return leftAtoms ++ rightAtoms
-        | _ => return #[]
+      return acc.insert (ENNRealExpr.no_finite_free_var expr)
+    | .fvar _ =>
+      let finiteVar? ← maybeFiniteFVar expr
+      match finiteVar? with
+      | some finiteExpr => return acc.insert (ENNRealExpr.finite_free_var finiteExpr)
+      | none => return acc.insert (ENNRealExpr.no_finite_free_var expr)
+    | .app f a =>
+      let accLeft ← visit f acc
+      let accRight ← visit a accLeft
+      return accRight
+    | _ => return acc
 
-  let allAtoms ← visit e
-
-  -- Remove exact duplicates
-  let mut uniqueAtoms := #[]
-  for atom in allAtoms do
-    let isDuplicate := uniqueAtoms.any (fun a => match (a, atom) with
-      | (ENNRealExpr.no_finite_free_var e1, ENNRealExpr.no_finite_free_var e2) => e1.equal e2
-      | (ENNRealExpr.finite_free_var f1, ENNRealExpr.finite_free_var f2) => f1.expr.equal f2.expr
-      | _ => false)
-    if !isDuplicate then
-      uniqueAtoms := uniqueAtoms.push atom
-
-  return uniqueAtoms
+  return ← visit e ∅
 
 
 def lift_to_real (ennExpr : ENNRealExpr) : TacticM Unit := do
