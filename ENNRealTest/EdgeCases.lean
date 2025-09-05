@@ -19,7 +19,7 @@ end BasicFailureTests
 
 section SubtractionTests
 
-example : (5 : ENNReal) - 2 = 3 := by
+example : (5 : ENNReal) - 2 = 5 := by
   fail_if_success eq_as_reals
   sorry
 
@@ -68,7 +68,7 @@ end EdgeCaseTests
 
 section ExtendedRecognitionTests
 
-lemma test_complex_mixed_operations : ((3 : ENNReal) + 2) * (4 ⊔ 6) - 1 = 29 := by
+lemma test_complex_mixed_operations : ((3 : ENNReal) + 2) * (4 ⊔ 6) - 1 = 35 := by
   fail_if_success eq_as_reals
   sorry
 

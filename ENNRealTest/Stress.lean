@@ -18,6 +18,17 @@ lemma test_stress_factorial_pattern :
 
 end StressTests
 
+section FractionStressTests
+
+lemma test_max_stress_1 : ((((2 : ENNReal) / 1) + 3) / 1 + 4) / 1 = 9 := by eq_as_reals
+
+lemma test_max_stress_2 : (((5 : ENNReal)⁻¹ + (5 : ENNReal)⁻¹) + 0) + 0 = 2 * (5 : ENNReal)⁻¹ := by eq_as_reals
+
+lemma test_max_stress_3 : ((10 : ENNReal) / 10 + 20 / 20 + 30 / 30) * 2 = 6 := by
+  eq_as_reals
+
+end FractionStressTests
+
 section FinalStressTests
 
 lemma test_max_nesting_1 : ((((((1 : ENNReal) + 1) + 1) + 1) + 1) + 1) + 1 = 7 := by eq_as_reals
