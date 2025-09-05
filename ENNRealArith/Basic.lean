@@ -166,30 +166,26 @@ def solveWithRealArithmetic : TacticM Unit := do
 def reduce (initialGoalState : Tactic.SavedState) : TacticM Unit := do
   trace[ENNRealArith.real_computation] "Converting ENNReal goal to Real arithmetic"
 
+  -- Try real arithmetic approach
   try
-    -- Applying congruence of ENNReal.ofNNReal and then solving in reals.
     evalTactic (← `(tactic|
     all_goals (first | congr 1 | apply ENNReal.toReal_nonneg) <;> norm_num))
-
     if (← getUnsolvedGoals).isEmpty then
       trace[ENNRealArith.real_computation] "Successfully solved with real arithmetic"
       return
-    else
-      restoreState initialGoalState
-      throwError "eq_as_reals failed: Could not prove the goal using real arithmetic."
-  catch e =>
-    trace[ENNRealArith.real_computation] m!"Real arithmetic failed: {e.toMessageData}"
-    try
-      restoreState initialGoalState
-      -- Why is this still needed? Can it be integrated in the try branch?
-      evalTactic (← `(tactic|  ring_nf))
-      if (← getUnsolvedGoals).isEmpty then
-        trace[ENNRealArith.real_computation] "Solved with ENNReal fallback"
-        return
-    catch _ => pure ()
+  catch _ => pure ()
 
-    restoreState initialGoalState
-    throwError "eq_as_reals failed: Could not prove the goal."
+  -- Try ENNReal ring normalization
+  restoreState initialGoalState
+  try
+    evalTactic (← `(tactic| ring_nf))
+    if (← getUnsolvedGoals).isEmpty then
+      trace[ENNRealArith.real_computation] "Solved with ENNReal fallback"
+      return
+  catch _ => pure ()
+
+  restoreState initialGoalState
+  throwError "eq_as_reals failed: Could not prove the goal."
 
 elab "eq_as_reals" : tactic =>
   withMainContext do
