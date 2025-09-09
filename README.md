@@ -2,6 +2,17 @@
 
 ENNReal appears frequently in Mathlib's probability theory and measure theory. This library provides a tactic `eq_as_reals` for ENNReal (extended non-negative real) numbers or arithmetic expressions. 
 
+## Enhanced Tracing for Debugging
+
+This library includes comprehensive tracing capabilities to help debug cache-related issues and performance bottlenecks. See [TRACING.md](TRACING.md) for detailed documentation on the tracing system.
+
+Quick example of enabling cache debugging:
+```lean
+set_option trace.ENNRealArith.atom_search.cache true
+set_option trace.ENNRealArith.performance_metrics true
+example : (2 : ENNReal) + 3 = 5 := by eq_as_reals
+``` 
+
 ## Installation
 
 Add this project as a dependency to your `lakefile.toml`:

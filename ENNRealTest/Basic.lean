@@ -4,6 +4,12 @@ open ENNReal
 
 -- set_option profiler true
 
+-- Example of enhanced tracing for cache debugging
+-- set_option trace.ENNRealArith.atom_search.cache true in
+-- set_option trace.ENNRealArith.enn_conversion.cache true in
+-- set_option trace.ENNRealArith.ofreal_lifting.cache true in
+-- set_option trace.ENNRealArith.performance_metrics true in
+
 -- set_option trace.ENNRealArith.expr_search true in
 -- set_option trace.ENNRealArith.enn_conversion true in
 -- set_option trace.ENNRealArith.ofreal_lifting true in
